@@ -22,9 +22,9 @@ flowchart TB
     app -->|"POST /v1/chat/completions"| pf
     pf --> svc --> pod
 
-    classDef host fill:#2563eb,stroke:#1e40af,color:#ffffff
+    classDef host fill:#475569,stroke:#334155,color:#ffffff
     classDef api  fill:#0d9488,stroke:#0f766e,color:#ffffff
-    classDef k8s  fill:#7c3aed,stroke:#6d28d9,color:#ffffff
+    classDef k8s  fill:#326ce5,stroke:#1a4fc0,color:#ffffff
     class app host
     class pf api
     class svc,pod k8s
