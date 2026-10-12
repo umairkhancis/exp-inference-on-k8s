@@ -4,17 +4,21 @@ Run a private, OpenAI-compatible LLM inference engine (vLLM) on a
 single-node Kubernetes cluster — fully sandboxed inside a Multipass VM on
 your own laptop. Zero dollars per token. Zero host contamination.
 
-```
-[ Your app / curl on the host ]
-            │  http://<vm-ip>:8000/v1   (OpenAI-compatible)
-            ▼
-[ Multipass VM: <username>-inference-engine ]   ← the security boundary
-            │  systemd port-forward 0.0.0.0:8000
-            ▼
-[ minikube (single-node k8s) ]
-            │  Service vllm (NodePort 30800)
-            ▼
-[ Pod: vLLM CPU engine — Qwen2.5-0.5B-Instruct ]
+```mermaid
+flowchart TB
+    app["Your app / curl on the host<br/>(any OpenAI SDK)"]
+
+    subgraph vm["Multipass VM — the security boundary"]
+        pf["OpenAI-compatible API<br/>http://&lt;vm-ip&gt;:8000/v1<br/>(systemd port-forward)"]
+        subgraph mk["minikube (single-node k8s)"]
+            svc["Service: vllm<br/>NodePort 30800"]
+            pod["Pod: vLLM CPU engine<br/>Qwen2.5-0.5B-Instruct"]
+        end
+    end
+
+    app --> pf
+    pf --> svc
+    svc --> pod
 ```
 
 **Why a VM?** Nobody should pipe a random script into `bash` on their host.
