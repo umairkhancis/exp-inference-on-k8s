@@ -1,8 +1,11 @@
-# Flat-Rate Inference on K8s
+# Experimenting LLM inference on K8s cluster
 
-Run a private, OpenAI-compatible LLM inference engine (vLLM) on a
-single-node Kubernetes cluster — fully sandboxed inside a Multipass VM on
-your own laptop. Zero dollars per token. Zero host contamination.
+Own your inference layer: vLLM on a Kubernetes cluster,
+serving an OpenAI-compatible API at a flat rate — instead of
+per-token bills from frontier labs.
+
+This experiment runs fully sandboxed in a Multipass VM on your
+laptop: hassle-free learning, nothing installed on your host.
 
 ```mermaid
 flowchart TB
