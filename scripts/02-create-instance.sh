@@ -63,8 +63,13 @@ else
 fi
 
 echo "[INFO] Copying stack files into the instance..."
-multipass exec "$INSTANCE_NAME" -- mkdir -p /home/ubuntu/inference/manifests
-multipass transfer "$REPO_DIR/manifests/vllm.yaml" "$INSTANCE_NAME":/home/ubuntu/inference/manifests/vllm.yaml
+multipass exec "$INSTANCE_NAME" -- mkdir -p /home/ubuntu/inference/manifests/dashboards
+for f in "$REPO_DIR"/manifests/*.yaml; do
+  multipass transfer "$f" "$INSTANCE_NAME":/home/ubuntu/inference/manifests/"$(basename "$f")"
+done
+for f in "$REPO_DIR"/manifests/dashboards/*.json; do
+  multipass transfer "$f" "$INSTANCE_NAME":/home/ubuntu/inference/manifests/dashboards/"$(basename "$f")"
+done
 multipass transfer "$SCRIPT_DIR/03-setup-stack.sh" "$INSTANCE_NAME":/home/ubuntu/inference/03-setup-stack.sh
 multipass exec "$INSTANCE_NAME" -- chmod +x /home/ubuntu/inference/03-setup-stack.sh
 

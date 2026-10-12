@@ -1,14 +1,28 @@
 #!/usr/bin/env bash
-# 1.2.3 — Simulate N developers (default 10) hammering the endpoint in
-# parallel, then report latency percentiles and token throughput.
+# 1.2.3 — Simulate N developers hammering the endpoint in parallel, then
+# report latency percentiles and token throughput.
 #
-#   DEVELOPERS=10 DURATION=60 ./verify/load-test.sh
+# Usage:
+#   ./verify/load-test.sh [developers] [duration-seconds]
+#   ./verify/load-test.sh 25 300          # 25 developers for 5 minutes
+#   DEVELOPERS=10 DURATION=60 ./verify/load-test.sh   # env vars work too
 set -euo pipefail
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'
+  exit 0
+fi
+
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
-DEVELOPERS="${DEVELOPERS:-10}"
-DURATION="${DURATION:-60}"
+DEVELOPERS="${1:-${DEVELOPERS:-10}}"
+DURATION="${2:-${DURATION:-60}}"
 MAX_TOKENS="${MAX_TOKENS:-64}"
+
+if ! [[ "$DEVELOPERS" =~ ^[0-9]+$ && "$DURATION" =~ ^[0-9]+$ ]]; then
+  echo "[ERROR] developers and duration must be whole numbers — see --help" >&2
+  exit 1
+fi
 
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
   BOLD=$'\033[1m'; DIM=$'\033[2m'; CYAN=$'\033[0;36m'; RESET=$'\033[0m'

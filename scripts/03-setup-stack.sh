@@ -53,28 +53,49 @@ sg docker -c "kubectl apply -f '$MANIFEST'"
 echo -e "$INFO Waiting for vLLM to come up (first boot pulls the image + ~1GB of model weights; this can take 10-20 min)..."
 sg docker -c "kubectl rollout status deployment/vllm -n inference --timeout=30m"
 
+# ------------------------------------------- observability (Phase 2) -------
+OBS_MANIFEST="$(dirname "$MANIFEST")/observability.yaml"
+DASHBOARDS_DIR="$(dirname "$MANIFEST")/dashboards"
+if [[ -f "$OBS_MANIFEST" ]]; then
+  echo -e "$INFO Deploying observability stack (Prometheus + Grafana)..."
+  # Dashboards live as plain .json files; build the ConfigMap from them.
+  sg docker -c "kubectl create configmap grafana-dashboards -n inference \
+    --from-file='$DASHBOARDS_DIR' --dry-run=client -o yaml | kubectl apply -f -"
+  sg docker -c "kubectl apply -f '$OBS_MANIFEST'"
+  sg docker -c "kubectl rollout status deployment/prometheus -n inference --timeout=5m"
+  sg docker -c "kubectl rollout status deployment/grafana -n inference --timeout=5m"
+fi
+
 # ----------------------------------------------- expose to the host (Mac) ---
-# kubectl port-forward bound to 0.0.0.0 as a systemd unit, so the Mac host
-# can reach the API at http://<vm-ip>:8000 and it survives reboots/crashes.
-echo -e "$INFO Installing port-forward systemd service (VM:8000 -> svc/vllm:8000)..."
-sudo tee /etc/systemd/system/vllm-portforward.service >/dev/null <<EOF
+# kubectl port-forward bound to 0.0.0.0 as systemd units, so the Mac host
+# can reach the services and the forwards survive reboots/crashes.
+make_portforward_unit() {
+  local name="$1" svc="$2" port="$3"
+  sudo tee /etc/systemd/system/"$name".service >/dev/null <<EOF
 [Unit]
-Description=Forward VM port 8000 to the vLLM k8s service
+Description=Forward VM port $port to k8s svc/$svc
 After=network-online.target docker.service
 Wants=network-online.target
 
 [Service]
 User=$USER
 Environment=KUBECONFIG=$HOME/.kube/config
-ExecStart=/usr/local/bin/kubectl port-forward --address 0.0.0.0 -n inference svc/vllm 8000:8000
+ExecStart=/usr/local/bin/kubectl port-forward --address 0.0.0.0 -n inference svc/$svc $port:$port
 Restart=always
 RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
 EOF
-sudo systemctl daemon-reload
-sudo systemctl enable --now vllm-portforward.service
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now "$name".service
+}
+
+echo -e "$INFO Installing port-forward systemd services (8000 vllm, 3000 grafana)..."
+make_portforward_unit vllm-portforward vllm 8000
+if [[ -f "$OBS_MANIFEST" ]]; then
+  make_portforward_unit grafana-portforward grafana 3000
+fi
 
 sleep 3
 VM_IP="$(hostname -I | awk '{print $1}')"
@@ -103,5 +124,8 @@ cat <<EOF
 
  Prometheus metrics:
      curl -s http://${VM_IP}:8000/metrics | grep vllm:
+
+ Grafana dashboards (cost + performance, no login needed):
+     http://${VM_IP}:3000
 =========================================================================
 EOF

@@ -1,0 +1,427 @@
+{
+  "uid": "token-econ",
+  "title": "Token Economics — Actuals (measured)",
+  "tags": [
+    "llm",
+    "cost",
+    "business"
+  ],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "schemaVersion": 39,
+  "editable": true,
+  "templating": {
+    "list": [
+      {
+        "type": "textbox",
+        "name": "claude_in",
+        "label": "Claude $ / M input tokens",
+        "query": "3.00",
+        "current": {
+          "text": "3.00",
+          "value": "3.00"
+        },
+        "options": [
+          {
+            "text": "3.00",
+            "value": "3.00",
+            "selected": true
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "claude_out",
+        "label": "Claude $ / M output tokens",
+        "query": "15.00",
+        "current": {
+          "text": "15.00",
+          "value": "15.00"
+        },
+        "options": [
+          {
+            "text": "15.00",
+            "value": "15.00",
+            "selected": true
+          }
+        ]
+      },
+      {
+        "type": "textbox",
+        "name": "gpu_hr",
+        "label": "GPU $ / hour (flat)",
+        "query": "2.49",
+        "current": {
+          "text": "2.49",
+          "value": "2.49"
+        },
+        "options": [
+          {
+            "text": "2.49",
+            "value": "2.49",
+            "selected": true
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Measured from the running inference layer — same tokens, two bills. Claude charges **per token**: the bill grows with every automation you run. This layer costs a **flat GPU-hour rate**: the bill stays the same no matter how many tokens flow. All numbers are the *actual* tokens served in the selected window. (What-if version: the Calculator dashboard.)"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Claude bill for this window (per-token × measured usage)",
+      "description": "The window's actual tokens priced at Claude per-token rates ($claude_in/M input, $claude_out/M output). Grows with every token served.",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(increase(vllm:prompt_tokens_total[$__range])) * $claude_in + sum(increase(vllm:generation_tokens_total[$__range])) * $claude_out) / 1e6",
+          "legendFormat": "Claude bill",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Self-hosted bill for this window (hours × flat GPU rate)",
+      "description": "Hours in the selected window × flat GPU rate. Select 'Last 1 hour' to see the hourly rate itself. Does not change with token volume.",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "vector($gpu_hr) * $__range_s / 3600",
+          "legendFormat": "Self-hosted bill",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Savings multiple — Claude ÷ self-hosted",
+      "description": "How many times more the same load would cost on Claude per-token pricing. The target: ≥ 10×.",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((sum(increase(vllm:prompt_tokens_total[$__range])) * $claude_in + sum(increase(vllm:generation_tokens_total[$__range])) * $claude_out) / 1e6) / ($gpu_hr * $__range_s / 3600)",
+          "legendFormat": "multiple",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix:×",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "green",
+                "value": 10
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Spend rate, $ per hour — Claude bills the meter, self-hosted bills the clock",
+      "description": "The Claude line moves with every token served — that is variable cost. The self-hosted line is flat at the GPU rate no matter how hard the box works. Wherever red is above green, per-token pricing is losing you money.",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(rate(vllm:prompt_tokens_total[5m])) * $claude_in + sum(rate(vllm:generation_tokens_total[5m])) * $claude_out) * 3600 / 1e6",
+          "legendFormat": "Claude (per-token — moves with usage)"
+        },
+        {
+          "refId": "B",
+          "expr": "vector($gpu_hr)",
+          "legendFormat": "Self-hosted (flat rate)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "custom": {
+            "fillOpacity": 12,
+            "lineWidth": 2,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Claude (per-token — moves with usage)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Self-hosted (flat rate)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Tokens in this window (measured)",
+      "description": "The demand driver: every automation multiplies this number — and with it, a per-token bill.",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 18
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(vllm:prompt_tokens_total[$__range]))",
+          "legendFormat": "input tokens",
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(vllm:generation_tokens_total[$__range]))",
+          "legendFormat": "output tokens",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Claude cost per M tokens (blended)",
+      "description": "Blended input+output rate at list prices — what each million tokens costs on the per-token model.",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 18
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(increase(vllm:prompt_tokens_total[$__range])) * $claude_in + sum(increase(vllm:generation_tokens_total[$__range])) * $claude_out) / (sum(increase(vllm:prompt_tokens_total[$__range])) + sum(increase(vllm:generation_tokens_total[$__range])))",
+          "legendFormat": "Claude $/M tok",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Self-hosted cost per M tokens — falls as usage grows",
+      "description": "Flat window cost ÷ tokens actually served. The busier the box, the cheaper each token gets — the opposite of per-token pricing.",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 18
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "($gpu_hr * $__range_s / 3600) * 1e6 / (sum(increase(vllm:prompt_tokens_total[$__range])) + sum(increase(vllm:generation_tokens_total[$__range])))",
+          "legendFormat": "self-hosted $/M tok",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    }
+  ]
+}
