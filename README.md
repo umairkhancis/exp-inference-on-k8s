@@ -9,19 +9,27 @@ laptop: hassle-free learning, nothing installed on your host.
 
 ```mermaid
 flowchart TB
-    app["Your app / curl on the host<br/>(any OpenAI SDK)"]
+    app["💻 Your app · curl · any OpenAI SDK"]
 
-    subgraph vm["Multipass VM — the security boundary"]
-        pf["OpenAI-compatible API<br/>http://&lt;vm-ip&gt;:8000/v1<br/>(systemd port-forward)"]
-        subgraph mk["minikube (single-node k8s)"]
-            svc["Service: vllm<br/>NodePort 30800"]
-            pod["Pod: vLLM CPU engine<br/>Qwen2.5-0.5B-Instruct"]
+    subgraph vm["🔒 Multipass VM — the security boundary"]
+        pf["OpenAI-compatible API<br/>http://VM-IP:8000/v1"]
+        subgraph mk["☸️ minikube — single-node k8s"]
+            svc["Service vllm<br/>NodePort 30800"]
+            pod["vLLM CPU engine<br/>Qwen2.5-0.5B-Instruct"]
         end
     end
 
-    app --> pf
-    pf --> svc
-    svc --> pod
+    app -->|"POST /v1/chat/completions"| pf
+    pf --> svc --> pod
+
+    classDef host fill:#2563eb,stroke:#1e40af,color:#ffffff
+    classDef api  fill:#0d9488,stroke:#0f766e,color:#ffffff
+    classDef k8s  fill:#7c3aed,stroke:#6d28d9,color:#ffffff
+    class app host
+    class pf api
+    class svc,pod k8s
+    style vm fill:transparent,stroke:#94a3b8,stroke-width:2px,stroke-dasharray:6 4
+    style mk fill:transparent,stroke:#94a3b8
 ```
 
 ## Quick start (one command)
