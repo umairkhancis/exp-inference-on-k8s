@@ -75,14 +75,14 @@
       "type": "text",
       "title": "",
       "gridPos": {
-        "h": 2,
+        "h": 3,
         "w": 24,
         "x": 0,
         "y": 0
       },
       "options": {
         "mode": "markdown",
-        "content": "### Measured from the running inference layer — same tokens, two bills. Claude charges **per token**: the bill grows with every automation you run. This layer costs a **flat GPU-hour rate**: the bill stays the same no matter how many tokens flow. All numbers are the *actual* tokens served in the selected window. (What-if version: the Calculator dashboard.)"
+        "content": "### Measured from the running inference layer.\n- Claude charges **per token**: the bill grows with every automation you run.\n- Self hosted inference layer costs a **flat GPU-hour rate**: the bill stays the same no matter how many tokens flow."
       }
     },
     {
@@ -94,7 +94,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 2
+        "y": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -134,7 +134,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 2
+        "y": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -174,7 +174,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 2
+        "y": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -227,7 +227,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 10
       },
       "datasource": {
         "type": "prometheus",
@@ -310,7 +310,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 18
+        "y": 19
       },
       "datasource": {
         "type": "prometheus",
@@ -352,7 +352,7 @@
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 18
+        "y": 19
       },
       "datasource": {
         "type": "prometheus",
@@ -392,7 +392,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 18
+        "y": 19
       },
       "datasource": {
         "type": "prometheus",
