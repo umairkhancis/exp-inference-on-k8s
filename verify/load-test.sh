@@ -10,6 +10,36 @@ DEVELOPERS="${DEVELOPERS:-10}"
 DURATION="${DURATION:-60}"
 MAX_TOKENS="${MAX_TOKENS:-64}"
 
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+  BOLD=$'\033[1m'; DIM=$'\033[2m'; CYAN=$'\033[0;36m'; RESET=$'\033[0m'
+else
+  BOLD=""; DIM=""; CYAN=""; RESET=""
+fi
+
+banner() {
+  echo "${CYAN}${BOLD}"
+  cat <<'EOF'
+  ___        __
+ |_ _|_ __  / _| ___ _ __ ___ _ __   ___ ___
+  | || '_ \| |_ / _ \ '__/ _ \ '_ \ / __/ _ \
+  | || | | |  _|  __/ | |  __/ | | | (_|  __/
+ |___|_| |_|_|  \___|_|  \___|_| |_|\___\___|
+  _   _                        _            _
+ | | | |_ __  _ __   __ _  ___| | _____  __| |
+ | | | | '_ \| '_ \ / _` |/ __| |/ / _ \/ _` |
+ | |_| | | | | |_) | (_| | (__|   <  __/ (_| |
+  \___/|_| |_| .__/ \__,_|\___|_|\_\___|\__,_|
+             |_|
+EOF
+  echo "${RESET}"
+  echo "  ${BOLD}Inference Unpacked${RESET} ${DIM}· load test (${DEVELOPERS} developers, ${DURATION}s)${RESET}"
+  echo "  ${DIM}gateway:${RESET} ${BASE_URL}/v1"
+  echo "  ${DIM}model:  ${RESET} ${MODEL}"
+  echo
+}
+
+banner
+
 RESULTS_DIR="$(mktemp -d)"
 trap 'rm -rf "$RESULTS_DIR"' EXIT
 
@@ -53,7 +83,6 @@ developer() {
   done
 }
 
-echo "[INFO] Target: $BASE_URL/v1  (model: $MODEL)"
 echo "[INFO] Simulating $DEVELOPERS developers for ${DURATION}s (max_tokens=$MAX_TOKENS)..."
 
 read -r P0 G0 <<< "$(snapshot_tokens)"

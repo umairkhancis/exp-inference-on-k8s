@@ -15,6 +15,35 @@ REPO_URL="${REPO_URL:-https://github.com/umairkhancis/exp-inference-on-k8s.git}"
 INSTANCE_NAME="${INSTANCE_NAME:-$(whoami)-inference-engine}"
 export INSTANCE_NAME
 
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+  BOLD=$'\033[1m'; DIM=$'\033[2m'; CYAN=$'\033[0;36m'; RESET=$'\033[0m'
+else
+  BOLD=""; DIM=""; CYAN=""; RESET=""
+fi
+
+banner() {
+  echo "${CYAN}${BOLD}"
+  cat <<'EOF'
+  ___        __
+ |_ _|_ __  / _| ___ _ __ ___ _ __   ___ ___
+  | || '_ \| |_ / _ \ '__/ _ \ '_ \ / __/ _ \
+  | || | | |  _|  __/ | |  __/ | | | (_|  __/
+ |___|_| |_|_|  \___|_|  \___|_| |_|\___\___|
+  _   _                        _            _
+ | | | |_ __  _ __   __ _  ___| | _____  __| |
+ | | | | '_ \| '_ \ / _` |/ __| |/ / _ \/ _` |
+ | |_| | | | | |_) | (_| | (__|   <  __/ (_| |
+  \___/|_| |_| .__/ \__,_|\___|_|\_\___|\__,_|
+             |_|
+EOF
+  echo "${RESET}"
+  echo "  ${BOLD}Inference Unpacked${RESET} ${DIM}· flat-rate vLLM on k8s, one-shot installer${RESET}"
+  echo "  ${DIM}instance:${RESET} ${INSTANCE_NAME}"
+  echo
+}
+
+banner
+
 # When piped via curl there is no local checkout — fetch one.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || true)"
 if [[ -z "$SCRIPT_DIR" || ! -f "$SCRIPT_DIR/scripts/03-setup-stack.sh" ]]; then
