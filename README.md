@@ -7,6 +7,12 @@ per-token bills from frontier labs.
 This experiment runs fully sandboxed in a Multipass VM on your
 laptop: hassle-free learning, nothing installed on your host.
 
+## Demo
+
+https://github.com/user-attachments/assets/46a1b599-9074-442d-9193-2fabb36ac39a
+
+## Architecture
+
 ```mermaid
 flowchart TB
     app["💻 Your app · curl · any OpenAI SDK"]
