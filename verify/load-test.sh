@@ -97,6 +97,8 @@ developer() {
   done
 }
 
+sleep 10
+
 echo "[INFO] Simulating $DEVELOPERS developers for ${DURATION}s (max_tokens=$MAX_TOKENS)..."
 
 read -r P0 G0 <<< "$(snapshot_tokens)"

@@ -27,3 +27,24 @@ https://github.com/umairkhancis/exp-inference-on-k8s
 (The full command is also visible in the attached image. LinkedIn rewrites any link inside post text, so copy it from the README.)
 
 #vLLM #Kubernetes #LLM #SelfHosted #MLOps
+
+## Post #2 — experiment/02
+
+Self-hosted inference can slash AI cost by 10x.
+
+In my last post I showed how to run your own LLM inference layer on Kubernetes from a laptop. 
+
+This experiment answers the next question: what does it actually save?
+
+The key idea is two different cost functions:
+
+1. Frontier APIs charge per token. The bill is variable. Every new automation, every agent, every retry makes it grow.
+2. Self-hosted inference costs a flat rate per GPU hour. The bill is fixed. It does not care how many tokens flow through the box.
+
+So I added an observability layer to the stack: Prometheus scrapes the vLLM metrics, and Grafana shows three dashboards.
+
+Checkout Grafana dashboards open `http://inference.local:3000` after spinning up the local stack. 
+
+Installation instructions are in the repository (link is in the comments section).
+
+#vLLM #Kubernetes #LLM #SelfHosted #MLOps #Grafana #TokenEconomics

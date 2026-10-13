@@ -97,6 +97,16 @@ if [[ -f "$OBS_MANIFEST" ]]; then
   make_portforward_unit grafana-portforward grafana 3000
 fi
 
+# ------------------------------------------------- friendly mDNS name -------
+# Advertise this VM as 'inference.local' via Bonjour/mDNS, so the host can
+# use a readable URL instead of the VM IP.
+if ! dpkg -s avahi-daemon >/dev/null 2>&1; then
+  echo -e "$INFO Installing avahi-daemon (mDNS name: inference.local)..."
+  sudo apt-get -o DPkg::Lock::Timeout=300 install -y -q avahi-daemon
+fi
+sudo sed -i 's/^#\?host-name=.*/host-name=inference/' /etc/avahi/avahi-daemon.conf
+sudo systemctl restart avahi-daemon
+
 sleep 3
 VM_IP="$(hostname -I | awk '{print $1}')"
 
@@ -115,17 +125,19 @@ cat <<EOF
  Flat-rate inference engine is LIVE (zero $ per token).
 
  OpenAI-compatible API (from your host machine):
-     http://${VM_IP}:8000/v1
+     http://inference.local:8000/v1
 
  Try it from your host:
-     curl -s http://${VM_IP}:8000/v1/chat/completions \\
+     curl -s http://inference.local:8000/v1/chat/completions \\
        -H 'Content-Type: application/json' \\
        -d '{"model":"Qwen/Qwen2.5-0.5B-Instruct","messages":[{"role":"user","content":"Say hello"}]}'
 
  Prometheus metrics:
-     curl -s http://${VM_IP}:8000/metrics | grep vllm:
+     curl -s http://inference.local:8000/metrics | grep vllm:
 
  Grafana dashboards (cost + performance, no login needed):
-     http://${VM_IP}:3000
+     http://inference.local:3000
+
+ (If .local names do not resolve on your host, use the VM IP: http://${VM_IP})
 =========================================================================
 EOF
