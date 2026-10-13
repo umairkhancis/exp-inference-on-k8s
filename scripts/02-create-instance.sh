@@ -4,8 +4,10 @@
 set -euo pipefail
 
 INSTANCE_NAME="${INSTANCE_NAME:-$(whoami)-inference-engine}"
-VM_CPUS="${VM_CPUS:-4}"
-VM_MEMORY="${VM_MEMORY:-8G}"
+# 6 CPUs / 12G: vLLM (CPU inference) + Prometheus + Grafana + Open WebUI.
+# 4/8G ran out of headroom once Open WebUI joined the stack (Phase 3).
+VM_CPUS="${VM_CPUS:-6}"
+VM_MEMORY="${VM_MEMORY:-12G}"
 VM_DISK="${VM_DISK:-40G}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

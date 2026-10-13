@@ -48,3 +48,29 @@ Checkout Grafana dashboards open `http://inference.local:3000` after spinning up
 Installation instructions are in the repository (link is in the comments section).
 
 #vLLM #Kubernetes #LLM #SelfHosted #MLOps #Grafana #TokenEconomics
+
+## Post #3 — experiment/03
+
+Experiment #03: You can chat with a self-hosted LLM right now.
+
+https://workstation-greatest-lemon-trembl.trycloudflare.com
+
+No API key, no GPU, no per-token bill.
+
+1. Open the link and sign up.
+
+2. You will be talking to Qwen2.5 0.5B. Expect small-model answers, not GPT-5.
+
+3. Everything you type is served from a local CPU server.
+
+Behind the scenes, vLLM serving the model on a small Kubernetes cluster with the freedom AI stack of Open Web UI.
+
+Experiment #01 showed you can run your own inference layer on Kubernetes from a laptop. 
+
+Experiment #02 showed how having local inference layer can change the AI automation economics compared to per-token. 
+
+You can try this yourself. 
+
+Link to the repository is in the comments section.
+
+#vLLM #Kubernetes #LLM #SelfHosted #MLOps #OpenWebUI

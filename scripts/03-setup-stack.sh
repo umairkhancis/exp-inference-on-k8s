@@ -66,6 +66,14 @@ if [[ -f "$OBS_MANIFEST" ]]; then
   sg docker -c "kubectl rollout status deployment/grafana -n inference --timeout=5m"
 fi
 
+# ------------------------------------------------- Open WebUI (Phase 3) -----
+UI_MANIFEST="$(dirname "$MANIFEST")/open-webui.yaml"
+if [[ -f "$UI_MANIFEST" ]]; then
+  echo -e "$INFO Deploying Open WebUI (chat frontend for vLLM)..."
+  sg docker -c "kubectl apply -f '$UI_MANIFEST'"
+  sg docker -c "kubectl rollout status deployment/open-webui -n inference --timeout=30m"
+fi
+
 # ----------------------------------------------- expose to the host (Mac) ---
 # kubectl port-forward bound to 0.0.0.0 as systemd units, so the Mac host
 # can reach the services and the forwards survive reboots/crashes.
@@ -91,10 +99,13 @@ EOF
   sudo systemctl enable --now "$name".service
 }
 
-echo -e "$INFO Installing port-forward systemd services (8000 vllm, 3000 grafana)..."
+echo -e "$INFO Installing port-forward systemd services (8000 vllm, 3000 grafana, 8080 open-webui)..."
 make_portforward_unit vllm-portforward vllm 8000
 if [[ -f "$OBS_MANIFEST" ]]; then
   make_portforward_unit grafana-portforward grafana 3000
+fi
+if [[ -f "$UI_MANIFEST" ]]; then
+  make_portforward_unit open-webui-portforward open-webui 8080
 fi
 
 # ------------------------------------------------- friendly mDNS name -------
@@ -137,6 +148,9 @@ cat <<EOF
 
  Grafana dashboards (cost + performance, no login needed):
      http://inference.local:3000
+
+ Chat UI (Open WebUI, no login needed):
+     http://inference.local:8080
 
  (If .local names do not resolve on your host, use the VM IP: http://${VM_IP})
 =========================================================================

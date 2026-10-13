@@ -41,13 +41,21 @@ spec:
             - "Qwen/Qwen2.5-0.5B-Instruct"
             - "--host=0.0.0.0"
             - "--port=8000"
-            - "--max-model-len=2048"
+            # 2048 was the 8G-VM ceiling; Open WebUI's native tool calling
+            # alone injects >2k tokens of tool schemas per request, so the
+            # context must be comfortably larger (Qwen2.5 supports 32k).
+            - "--max-model-len=8192"
             # Keep the startup memory profile under the 5Gi limit on an
             # 8G VM: small batch ceiling + 1GiB KV cache (env below).
             - "--max-num-seqs=4"
             # torch.compile's C++ kernel compilation is broken in this
             # image (missing inductor headers); eager mode skips it.
             - "--enforce-eager"
+            # Open WebUI sends tool_choice:"auto" with chat requests;
+            # without these vLLM 400s every message. Qwen2.5 uses the
+            # hermes tool-call format.
+            - "--enable-auto-tool-choice"
+            - "--tool-call-parser=hermes"
           env:
             # GiB of RAM reserved for the KV cache (CPU backend).
             - name: VLLM_CPU_KVCACHE_SPACE
@@ -66,29 +74,39 @@ spec:
               cpu: "2"
               memory: 3Gi
             limits:
-              memory: 5Gi
+              memory: 6Gi
           # First boot downloads ~1GB of model weights from Hugging Face,
           # so allow up to 20 minutes before declaring the pod dead.
+          # timeoutSeconds: the default 1s is too strict on a shared CPU —
+          # a neighbor pod's image pull or startup (e.g. Open WebUI) can
+          # delay /health past 1s and the liveness probe then kills a
+          # healthy vLLM, forcing a multi-minute model reload.
           startupProbe:
             httpGet:
               path: /health
               port: 8000
             periodSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 120
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
             periodSeconds: 5
+            timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
             periodSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 6
           volumeMounts:
+            # The image sets HF_HOME=/data/models (NOT ~/.cache/huggingface),
+            # so the cache must be mounted there or every restart re-downloads
+            # the full model weights.
             - name: hf-cache
-              mountPath: /root/.cache/huggingface
+              mountPath: /data/models
             # vLLM's engine needs >64Mi of shared memory for its IPC ring
             # buffer; the k8s default /dev/shm is 64Mi and crashes it.
             - name: shm

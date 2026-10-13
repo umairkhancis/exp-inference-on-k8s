@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-webui
+  namespace: inference
+  labels:
+    app: open-webui
+spec:
+  replicas: 1
+  # First boot pulls a ~1.5GB image on a shared line; don't let the
+  # rollout be declared failed before that finishes.
+  progressDeadlineSeconds: 1800
+  # Single-node cluster + hostPath data volume: replace instead of rolling
+  # so the surge pod never deadlocks on resources or the data directory.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: open-webui
+  template:
+    metadata:
+      labels:
+        app: open-webui
+    spec:
+      # Same class of bug that bit vLLM: legacy service-link env vars
+      # (OPEN_WEBUI_PORT=tcp://...) can collide with app config. Off.
+      enableServiceLinks: false
+      containers:
+        - name: open-webui
+          image: ghcr.io/open-webui/open-webui:v0.12.0
+          env:
+            # Talk to vLLM via in-cluster DNS (same namespace), not a
+            # host address — this replaces the docker command's 0.0.0.0.
+            - name: OPENAI_API_BASE_URL
+              value: http://vllm:8000/v1
+            # vLLM runs without --api-key, but Open WebUI wants a
+            # non-empty value to enable the OpenAI connection.
+            - name: OPENAI_API_KEY
+              value: flat-rate
+            # No Ollama in this cluster; stop the UI from probing for it.
+            - name: ENABLE_OLLAMA_API
+              value: "false"
+            # Sign-in required: the UI is shared beyond the local machine
+            # (Cloudflare tunnel). First signup becomes admin; later
+            # signups are pending until the admin approves them.
+            # NOTE: flipping this on an existing single-user DB requires
+            # wiping /data/open-webui on the node first.
+            - name: WEBUI_AUTH
+              value: "true"
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              memory: 1536Mi
+          # First boot = image pull + DB migrations on an ARM CPU; give it
+          # up to 10 minutes before declaring the pod dead.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 6
+          volumeMounts:
+            # The docker command's named volume (open-webui:/app/backend/data):
+            # chats, settings and the local DB survive pod restarts.
+            - name: data
+              mountPath: /app/backend/data
+      volumes:
+        - name: data
+          hostPath:
+            path: /data/open-webui
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui
+  namespace: inference
+  labels:
+    app: open-webui
+spec:
+  type: NodePort
+  selector:
+    app: open-webui
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30880
