@@ -53,7 +53,7 @@ Installation instructions are in the repository (link is in the comments section
 
 Experiment #03: You can chat with a self-hosted LLM right now.
 
-https://workstation-greatest-lemon-trembl.trycloudflare.com
+https://successful-deny-shares-replies.trycloudflare.com
 
 No API key, no GPU, no per-token bill.
 
