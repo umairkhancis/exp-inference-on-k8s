@@ -74,3 +74,33 @@ You can try this yourself.
 Link to the repository is in the comments section.
 
 #vLLM #Kubernetes #LLM #SelfHosted #MLOps #OpenWebUI
+
+## Post #4 — experiment/04
+
+Experiment #04: Distributed inference on your laptop, the way the big labs route it.
+
+One vLLM server was experiments 1–3. But that's not how LLMs are served at scale — at scale you run a fleet, and the hard problem becomes routing: which replica should answer this request?
+
+Naive load balancing wastes the most valuable thing a model server has: its KV cache. If your request shares a prefix with an earlier one (same system prompt, same conversation), the pod that served it can skip recomputing all those tokens — but only if the router sends you back to that exact pod.
+
+That's what llm-d does, and I ran it on a real Kubernetes cluster on my MacBook:
+
+1. 4 Ubuntu VMs via Multipass: 1 master + 3 workers, bootstrapped with kubeadm. Real cluster, not minikube.
+
+2. llm-d's gateway: an Envoy proxy that asks an Endpoint Picker (EPP) where to send every request.
+
+3. A fleet of 3 vLLM replicas serving Qwen2.5 0.5B, one per worker node.
+
+Then I measured the routing, from outside the cluster:
+
+1. 8 requests sharing a long prompt prefix → all 8 landed on the SAME pod, which reported thousands of prefix-cache hit tokens. No recompute.
+
+2. 12 unrelated requests → spread 4/4/4 across the fleet. No false pinning.
+
+Cache-aware when it should be, load-balanced when it shouldn't.
+
+One command to try it (Apple Silicon, 24GB RAM): ./install.sh — it brings up the cluster, the gateway, the fleet, and Grafana dashboards, then proves the routing claims against your own machine.
+
+Link to the repository is in the comments section.
+
+#llmd #vLLM #Kubernetes #LLM #SelfHosted #MLOps #DistributedInference

@@ -19,7 +19,10 @@ log "Installing kube-prometheus-stack via the llm-d installer (ns ${MON_NS})"
 MONITORING_NAMESPACE="${MON_NS}" bash "${LLMD_REPO}/guides/recipes/observability/install-prometheus-grafana.sh"
 
 log "Right-sizing Prometheus for this cluster (the guide's 4Gi request cannot schedule on 6G workers)"
+# --force-conflicts: reruns must reclaim Service fields owned by our
+# kubectl-patch NodePort steps below (helm 4 applies server-side)
 helm upgrade llmd prometheus-community/kube-prometheus-stack -n "${MON_NS}" --reuse-values \
+  --force-conflicts \
   --set prometheus.prometheusSpec.resources.requests.cpu=200m \
   --set prometheus.prometheusSpec.resources.requests.memory=512Mi \
   --set prometheus.prometheusSpec.resources.limits.memory=1536Mi
@@ -36,9 +39,11 @@ kn apply -k "${LLMD_REPO}/guides/recipes/modelserver/components/monitoring" 2>/d
 log "Loading the llm-d Grafana dashboards"
 bash "${LLMD_REPO}/guides/recipes/observability/load-llm-d-dashboards.sh" "${MON_NS}"
 
-log "Exposing Grafana on NodePort 30300"
+log "Exposing Grafana on NodePort 30300 and Prometheus on NodePort 30090"
 k -n "${MON_NS}" patch svc llmd-grafana -p \
   '{"spec":{"type":"NodePort","ports":[{"name":"http-web","port":80,"targetPort":3000,"nodePort":30300}]}}'
+k -n "${MON_NS}" patch svc llmd-kube-prometheus-stack-prometheus -p \
+  '{"spec":{"type":"NodePort","ports":[{"name":"http-web","port":9090,"targetPort":9090,"nodePort":30090}]}}'
 
 log "Waiting for Prometheus to scrape the llm-d targets"
 PROM_PROXY="/api/v1/namespaces/${MON_NS}/services/llmd-kube-prometheus-stack-prometheus:9090/proxy"
@@ -53,4 +58,4 @@ k get --raw "${PROM_PROXY}/api/v1/targets" \
 [[ "${UP:-0}" -ge 2 ]] || die "expected >=2 healthy llm-d scrape targets (EPP + decode pods), got ${UP:-0}"
 
 MASTER_IP="$(vm_ip "${MASTER_NAME}")"
-log "Monitoring ready: Grafana http://${MASTER_IP}:30300 (admin/admin), Prometheus via 'kubectl -n ${MON_NS} port-forward svc/llmd-kube-prometheus-stack-prometheus 9090'"
+log "Monitoring ready: Grafana http://${MASTER_IP}:30300 (admin/admin), Prometheus http://${MASTER_IP}:30090"

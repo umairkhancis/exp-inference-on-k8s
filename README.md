@@ -1,108 +1,118 @@
-# exp-inference-on-k8s — experiment 04
+# Distributed LLM inference on your laptop
 
-Distributed LLM inference with [llm-d](https://llm-d.ai) on a real kubeadm
-Kubernetes cluster, where the nodes are Multipass VMs on a Mac (ARM64).
+Run the serving architecture the big labs use — a fleet of model servers behind
+a smart router — on a real Kubernetes cluster, entirely on your Mac:
 
-## Phase 1 — cluster setup
+- **4-node Kubernetes cluster** (kubeadm) on isolated Ubuntu VMs (Multipass)
+- **[llm-d](https://llm-d.ai)**: an Envoy gateway whose Endpoint Picker (EPP)
+  routes each request by **KV-cache affinity** — same prompt prefix, same pod,
+  no recompute
+- **3 × vLLM** replicas serving `Qwen/Qwen2.5-0.5B-Instruct` behind one
+  OpenAI-compatible API
+- **Prometheus + Grafana** dashboards for the whole thing
 
-One command brings up a 4-node cluster (1 master + 3 workers) with everything
-llm-d needs underneath it (CNI, default StorageClass, host tooling), but no
-llm-d components yet:
+![architecture](docs/assets/experiment-04/architecture.png)
 
-```sh
-make up           # or: scripts/setup-k8s-cluster/setup-k8s-cluster.sh
-```
+## What you need
 
-When it finishes:
+- A Mac with **Apple Silicon**, **24GB RAM**, **~40GB free disk**
+- [Multipass](https://canonical.com/multipass) and jq:
+  `brew install --cask multipass && brew install jq`
 
-```sh
-export KUBECONFIG=$(pwd)/kubeconfig/config
-kubectl get nodes
-```
+Everything else (kubectl, helm, helmfile, yq, the Ubuntu image, the llm-d
+charts) is installed for you. Nothing runs on your Mac itself — all compute
+lives in the VMs, and `make down` removes every trace.
 
-Tear it all down (keeps the cached cloud image):
-
-```sh
-make down
-```
-
-### Layers
-
-The setup lives under `scripts/setup-k8s-cluster/`, split into independently
-rerunnable, idempotent layers — a failed run can simply be retried. The
-Makefile exposes each layer; `make up` chains them in order.
-
-| Make target | Script | What it does |
-|---|---|---|
-| `host-prereqs` | `host/prereqs.sh` | Host tools (kubectl, helm, helmfile, yq) + hash-verified Ubuntu 24.04 ARM64 cloud image |
-| `instances` | `host/create-instances.sh` | Multipass VMs, launched from `file://` image¹ |
-| `node-prereqs` | `node/provision-all.sh` | containerd + kubeadm/kubelet/kubectl on every node, in parallel (`node/k8s-node-setup.sh` runs inside each VM) |
-| `control-plane` | `cluster/init-control-plane.sh` | `kubeadm init`, flannel CNI, local-path default StorageClass |
-| `workers` | `cluster/join-workers.sh` | Joins the 3 workers |
-| `kubeconfig` | `access/fetch-kubeconfig.sh` | Admin kubeconfig → `kubeconfig/config`, reachable from the host |
-| `verify` | `access/verify.sh` | Nodes Ready, system pods up, nginx scheduling smoke test |
-| `status` | — | `multipass list` + `kubectl get nodes` |
-| `down` | `teardown-k8s-cluster.sh` | Delete VMs + local kubeconfig |
-
-¹ `multipassd`'s internal downloader truncates image downloads on this host,
-so the image is fetched with `curl`, verified against Canonical's SHA256SUMS
-(re-downloading from scratch when the `release` alias has moved on), and
-launched via `file://`.
-
-## Phase 2 — llm-d: distributed inference with cache-aware routing
-
-On top of the phase-1 cluster, one command deploys llm-d's standalone router
-(Envoy gateway + EPP endpoint picker) and three vLLM CPU model servers, one
-pinned to each worker:
+## Install
 
 ```sh
-make llmd-up
+git clone https://github.com/umairkhancis/exp-inference-on-k8s.git
+cd exp-inference-on-k8s
+./install.sh            # ~45–60 min on first run (image + model downloads)
 ```
 
-It follows the [llm-d quickstart](https://llm-d.ai/docs/getting-started/quickstart)
-(repo cloned at `release-1.0` into `~/.cache/exp-inference-on-k8s/llm-d`), with
-our deltas in `scripts/setup-llm-d/`: router/EPP downsized for small nodes
-(`values/cpu-arm64.values.yaml`) and the guide's 64-core x86 CPU recipe patched
-to 3× `Qwen/Qwen2.5-0.5B-Instruct` on ARM64 (`manifests/modelserver/`).
+Every layer is idempotent: if anything fails (a flaky download, a timeout),
+just run it again — finished layers skip themselves.
 
-| Make target | What it does |
-|---|---|
-| `llmd-resize-workers` | Workers 4G → 6G RAM, rolling (vLLM CPU needs the headroom) |
-| `llmd-repo` | Pinned quickstart clone |
-| `llmd-prereqs` | Gateway API Inference Extension CRDs, namespace, HF token secret |
-| `llmd-router` | `llm-d-router-standalone` chart: Envoy + EPP with prefix-cache-affinity + token-load scorers |
-| `llmd-modelservers` | 3 × vLLM CPU (`vllm/vllm-openai-cpu:v0.31.0`, arm64), one per worker via required anti-affinity |
-| `llmd-gateway` | NodePort 30080 → Envoy listener |
-| `llmd-verify` | Completion via the gateway + both routing proofs below |
-| `llmd-verify-affinity` | Same prompt prefix ⇒ all requests pin to ONE vLLM pod, with prefix-cache hits |
-| `llmd-verify-spread` | Distinct prompts ⇒ requests spread across pods (load-based, no false pinning) |
-| `llmd-monitoring` | Prometheus + Grafana per the llm-d guide: kube-prometheus-stack (right-sized), EPP ServiceMonitor, decode PodMonitor, llm-d dashboards; Grafana at NodePort 30300 (admin/admin) |
-| `llmd-down` | Remove llm-d (cluster stays) |
+Prefer to watch it happen in stages?
 
-`make llmd-verify` proves the phase-2 claim end to end from the host: a curl to
-`http://<master-ip>:30080/v1/completions` answers 200 through Envoy (ext-proc
-header), then 8 requests sharing a ~500-token prefix all land on the same vLLM
-pod with prefix-cache hits — the EPP routing by cache affinity, not round-robin:
-
-```
-optimized-...-4bqhb (k8s-worker-3) queries+8088 hits+6272
-optimized-...-kp4nb (k8s-worker-1) queries+0    hits+0
-optimized-...-p7fm8 (k8s-worker-2) queries+0    hits+0
+```sh
+make up                 # the Kubernetes cluster
+make llmd-up            # gateway + EPP + vLLM fleet (ends by verifying routing)
+make llmd-monitoring    # Prometheus + Grafana
 ```
 
-Hard-won ARM64/CPU specifics baked into `manifests/modelserver/patch-vllm-arm64.yaml`:
-`--enforce-eager` + explicit `--kv-cache-memory-bytes` (skips the warmup pass
-whose memory spike fails the KV allocation check on small cgroups), and
-`VLLM_ENABLE_V1_MULTIPROCESSING=0` (single process instead of three, saving
-~2G of duplicated torch RSS). Do **not** set `TORCHDYNAMO_DISABLE=1` with
-vLLM ≥ 0.31 — the CPU engine aborts at startup.
+## Use it
 
-### Sizing (override via env vars)
+The install prints your master node's IP (something like `192.168.252.21`).
 
-| | CPUs | RAM | Disk |
-|---|---|---|---|
-| `k8s-master` | 2 | 3G | 20G |
-| `k8s-worker-{1..3}` | 3 | 4G | 30G |
+**Call the API** — it speaks the OpenAI protocol, so point any SDK at it:
 
-E.g. `WORKER_MEM=6G WORKER_COUNT=2 make up`. All knobs live in
-`scripts/setup-k8s-cluster/lib/common.sh`.
+```sh
+curl -s http://<master-ip>:30080/v1/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model": "Qwen/Qwen2.5-0.5B-Instruct", "prompt": "Kubernetes is", "max_tokens": 32}' | jq
+```
+
+**Watch the dashboards** — `http://<master-ip>:30300` (admin/admin): request
+rates, latency, prefix-cache hit rates, per-pod load.
+
+**Drive the cluster** — `export KUBECONFIG=$(pwd)/kubeconfig/config`, then
+`kubectl -n llm-d get pods -o wide` shows the fleet, one vLLM per worker.
+
+## See the routing for yourself
+
+The interesting claim is the routing, so prove it on your machine:
+
+```sh
+make llmd-verify-affinity   # 8 requests sharing a prefix -> ONE pod, with cache hits
+make llmd-verify-spread     # 12 unrelated requests       -> spread across the fleet
+```
+
+Each prints a per-pod table of served requests and prefix-cache hits, and fails
+loudly if the claim doesn't hold.
+
+## Tune it
+
+All knobs are environment variables — see `scripts/setup-k8s-cluster/lib/common.sh`
+and `scripts/setup-llm-d/lib/common.sh` for the full list. The useful ones:
+
+```sh
+WORKER_COUNT=2 make up            # fewer workers (e.g. on a 16GB machine)
+WORKER_MEM=8G make llmd-resize-workers
+LLMD_MODEL=... REQUESTS=20 make llmd-verify-affinity
+```
+
+## Tear down
+
+```sh
+make llmd-down   # remove llm-d, keep the cluster
+make down        # delete the VMs and kubeconfig (cached downloads are kept)
+```
+
+## If something goes wrong
+
+- **Rerun the same command.** Every layer checks what already exists.
+- `make status` shows the VMs and nodes at a glance.
+- Node provisioning logs land in `.logs/<node>-prereqs.log`.
+- First boot of the vLLM pods downloads ~1GB of weights each; the rollout
+  waits up to 30 minutes before giving up.
+- The Ubuntu image is fetched with curl and SHA-verified because `multipassd`'s
+  own downloader truncates large downloads on some Macs; a stale cached image
+  is re-downloaded automatically.
+
+## How it's organized
+
+```
+install.sh                    # everything, one command
+Makefile                      # all targets (make <tab> to explore)
+scripts/setup-k8s-cluster/    # phase 1: host prereqs -> VMs -> kubeadm -> CNI -> verify
+scripts/setup-llm-d/          # phase 2: llm-d router + vLLM fleet + monitoring + proofs
+docs/                         # publish posts and graphics
+```
+
+Both phases follow the same pattern: small single-purpose layers you can run
+(and rerun) independently, orchestrated by make. The llm-d deployment follows
+the [official quickstart](https://llm-d.ai/docs/getting-started/quickstart)
+from a pinned `release-1.0` clone, with this repo contributing only the
+small-node/ARM64 overrides (`scripts/setup-llm-d/values/`, `manifests/`).
