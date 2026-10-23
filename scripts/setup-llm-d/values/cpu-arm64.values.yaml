@@ -1,0 +1,38 @@
+# Overrides layered on top of the llm-d repo's
+#   guides/recipes/router/base.values.yaml
+#   guides/optimized-baseline/router/optimized-baseline.values.yaml
+# The guide sizes EPP and the Envoy sidecar for datacenter hosts (4 CPU / 8Gi
+# each); our multipass workers have 3 CPUs / 6G total, so both are scaled down.
+# The EPP plugin config (approx-prefix-cache + prefix-cache-affinity-filter +
+# token-load-scorer) comes unchanged from the guide values = cache-aware routing.
+
+router:
+  epp:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+
+  proxy:
+    # Same flags as base.values.yaml with --concurrency lowered to match our CPUs.
+    args:
+      - "--service-node"
+      - "envoy-sidecar"
+      - "--log-level"
+      - "warn"
+      - "--concurrency"
+      - "2"
+      - "--drain-strategy"
+      - "immediate"
+      - "--drain-time-s"
+      - "60"
+      - "-c"
+      - "/etc/envoy/envoy.yaml"
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        memory: 1Gi

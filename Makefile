@@ -8,10 +8,13 @@
 
 SHELL := /bin/bash
 SCRIPTS := scripts/setup-k8s-cluster
+LLMD := scripts/setup-llm-d
 export KUBECONFIG := $(CURDIR)/kubeconfig/config
 
 .PHONY: up down status \
-	host-prereqs instances node-prereqs control-plane workers kubeconfig verify
+	host-prereqs instances node-prereqs control-plane workers kubeconfig verify \
+	llmd-up llmd-down llmd-resize-workers llmd-repo llmd-prereqs llmd-router \
+	llmd-modelservers llmd-gateway llmd-verify
 
 ## Full bring-up: host prereqs → VMs → node runtime → control plane → workers → access → verify
 up: host-prereqs instances node-prereqs control-plane workers kubeconfig verify
@@ -56,3 +59,40 @@ status:
 ## Tear everything down (keeps the cached cloud image)
 down:
 	$(SCRIPTS)/teardown-k8s-cluster.sh
+
+# ---------------- Phase 2: llm-d (Envoy gateway + EPP + vLLM CPU x3) ----------------
+
+## Full llm-d bring-up on the phase-1 cluster
+llmd-up: llmd-resize-workers llmd-repo llmd-prereqs llmd-router llmd-modelservers llmd-gateway llmd-verify
+
+## Workers to 6G RAM (rolling) — vLLM CPU needs the headroom
+llmd-resize-workers:
+	$(LLMD)/host/resize-workers.sh
+
+## Pinned clone of the llm-d quickstart repo (release-1.0)
+llmd-repo:
+	$(LLMD)/host/fetch-llm-d-repo.sh
+
+## GAIE CRDs + namespace + HF token secret
+llmd-prereqs:
+	$(LLMD)/cluster/prereqs.sh
+
+## llm-d router standalone chart (Envoy + EPP, cache-aware plugins)
+llmd-router:
+	$(LLMD)/cluster/install-router.sh
+
+## vLLM CPU model servers, one per worker
+llmd-modelservers:
+	$(LLMD)/cluster/deploy-modelservers.sh
+
+## NodePort 30080 for host access to the gateway
+llmd-gateway:
+	$(LLMD)/access/expose-gateway.sh
+
+## Completion via Envoy + cache-aware routing proof
+llmd-verify:
+	$(LLMD)/access/verify.sh
+
+## Remove llm-d (keeps cluster, CRDs, clone, worker sizing)
+llmd-down:
+	$(LLMD)/teardown-llm-d.sh

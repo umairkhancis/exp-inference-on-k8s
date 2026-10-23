@@ -1,0 +1,15 @@
+# CPU/ARM64 overlay for the llm-d optimized-baseline model server.
+# This directory is copied to ${IMAGE_CACHE_DIR}/llmd-overlay at deploy time so
+# the relative base below resolves against the quickstart clone next to it
+# (${IMAGE_CACHE_DIR}/llm-d).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../llm-d/guides/optimized-baseline/modelserver/cpu/vllm/base
+
+patches:
+  - path: patch-vllm-arm64.yaml
+    target:
+      kind: Deployment
+      name: optimized-baseline-cpu-vllm-decode

@@ -1,0 +1,70 @@
+# Shrinks the guide's CPU config (2 x 64 cores / 64Gi, Llama-3.2-3B) to our
+# three 3-CPU/6G ARM64 workers: one small vLLM per worker via required
+# anti-affinity, a 0.5B ungated model, and memory that survives vLLM's CPU
+# startup profiling spike. enableServiceLinks off so no Service env injection
+# can shadow vLLM's own variables.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: optimized-baseline-cpu-vllm-decode
+spec:
+  replicas: 3
+  progressDeadlineSeconds: 3600 # first boot pulls the image + model weights
+  # Required anti-affinity + fully occupied workers deadlocks RollingUpdate
+  # (the surge pod can never schedule); Recreate frees the nodes first.
+  strategy:
+    type: Recreate
+  template:
+    spec:
+      enableServiceLinks: false
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  llm-d.ai/role: decode
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: modelserver
+          args:
+            - "Qwen/Qwen2.5-0.5B-Instruct"
+            - "--max-model-len=2048"
+            - "--max-num-seqs=2"
+            # Eager mode + explicit KV size skips the warmup pass entirely, so
+            # the KV allocation check runs before RSS balloons (the cgroup
+            # "available" check counted warmup/compile memory and failed at
+            # both 4.5Gi and 5Gi limits). 768MiB KV is ample at this scale.
+            - "--enforce-eager"
+            - "--kv-cache-memory-bytes=805306368"
+            - "--enable-prefix-caching"
+            - "--disable-hybrid-kv-cache-manager"
+            - "--disable-access-log-for-endpoints=/health,/metrics,/v1/models"
+            - "--shutdown-timeout=45"
+          env:
+            # Drop the guide's int-GiB env (base sets 32); --kv-cache-memory-bytes
+            # above is the single source of truth for KV sizing.
+            - name: VLLM_CPU_KVCACHE_SPACE
+              $patch: delete
+            - name: VLLM_CPU_NUM_OF_RESERVED_CPU
+              value: "0"
+            # Run API server + engine + worker in ONE process (world_size=1):
+            # the 3-process default costs ~2G of duplicated torch RSS, which
+            # the cgroup-aware KV allocation check then can't afford.
+            - name: VLLM_ENABLE_V1_MULTIPROCESSING
+              value: "0"
+            # Do NOT set TORCHDYNAMO_DISABLE here: vLLM v0.31's CPU engine
+            # aot-compiles at startup and aborts if dynamo is disabled.
+          resources:
+            requests:
+              cpu: "2"
+              memory: 3Gi
+            limits:
+              cpu: "3"
+              # Measured: model load + warmup uses ~3.8Gi, KV cache needs 1Gi
+              # (VLLM_CPU_KVCACHE_SPACE) on top; 4.5Gi was 0.28Gi short.
+              memory: 5120Mi
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi

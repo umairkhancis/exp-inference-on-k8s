@@ -49,6 +49,51 @@ so the image is fetched with `curl`, verified against Canonical's SHA256SUMS
 (re-downloading from scratch when the `release` alias has moved on), and
 launched via `file://`.
 
+## Phase 2 — llm-d: distributed inference with cache-aware routing
+
+On top of the phase-1 cluster, one command deploys llm-d's standalone router
+(Envoy gateway + EPP endpoint picker) and three vLLM CPU model servers, one
+pinned to each worker:
+
+```sh
+make llmd-up
+```
+
+It follows the [llm-d quickstart](https://llm-d.ai/docs/getting-started/quickstart)
+(repo cloned at `release-1.0` into `~/.cache/exp-inference-on-k8s/llm-d`), with
+our deltas in `scripts/setup-llm-d/`: router/EPP downsized for small nodes
+(`values/cpu-arm64.values.yaml`) and the guide's 64-core x86 CPU recipe patched
+to 3× `Qwen/Qwen2.5-0.5B-Instruct` on ARM64 (`manifests/modelserver/`).
+
+| Make target | What it does |
+|---|---|
+| `llmd-resize-workers` | Workers 4G → 6G RAM, rolling (vLLM CPU needs the headroom) |
+| `llmd-repo` | Pinned quickstart clone |
+| `llmd-prereqs` | Gateway API Inference Extension CRDs, namespace, HF token secret |
+| `llmd-router` | `llm-d-router-standalone` chart: Envoy + EPP with prefix-cache-affinity + token-load scorers |
+| `llmd-modelservers` | 3 × vLLM CPU (`vllm/vllm-openai-cpu:v0.31.0`, arm64), one per worker via required anti-affinity |
+| `llmd-gateway` | NodePort 30080 → Envoy listener |
+| `llmd-verify` | Completion via the gateway + cache-aware routing proof |
+| `llmd-down` | Remove llm-d (cluster stays) |
+
+`make llmd-verify` proves the phase-2 claim end to end from the host: a curl to
+`http://<master-ip>:30080/v1/completions` answers 200 through Envoy (ext-proc
+header), then 8 requests sharing a ~500-token prefix all land on the same vLLM
+pod with prefix-cache hits — the EPP routing by cache affinity, not round-robin:
+
+```
+optimized-...-4bqhb (k8s-worker-3) queries+8088 hits+6272
+optimized-...-kp4nb (k8s-worker-1) queries+0    hits+0
+optimized-...-p7fm8 (k8s-worker-2) queries+0    hits+0
+```
+
+Hard-won ARM64/CPU specifics baked into `manifests/modelserver/patch-vllm-arm64.yaml`:
+`--enforce-eager` + explicit `--kv-cache-memory-bytes` (skips the warmup pass
+whose memory spike fails the KV allocation check on small cgroups), and
+`VLLM_ENABLE_V1_MULTIPROCESSING=0` (single process instead of three, saving
+~2G of duplicated torch RSS). Do **not** set `TORCHDYNAMO_DISABLE=1` with
+vLLM ≥ 0.31 — the CPU engine aborts at startup.
+
 ### Sizing (override via env vars)
 
 | | CPUs | RAM | Disk |
