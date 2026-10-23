@@ -14,7 +14,7 @@ export KUBECONFIG := $(CURDIR)/kubeconfig/config
 .PHONY: up down status \
 	host-prereqs instances node-prereqs control-plane workers kubeconfig verify \
 	llmd-up llmd-down llmd-resize-workers llmd-repo llmd-prereqs llmd-router \
-	llmd-modelservers llmd-gateway llmd-verify
+	llmd-modelservers llmd-gateway llmd-verify llmd-monitoring
 
 ## Full bring-up: host prereqs → VMs → node runtime → control plane → workers → access → verify
 up: host-prereqs instances node-prereqs control-plane workers kubeconfig verify
@@ -92,6 +92,10 @@ llmd-gateway:
 ## Completion via Envoy + cache-aware routing proof
 llmd-verify:
 	$(LLMD)/access/verify.sh
+
+## Prometheus + Grafana per the llm-d guide (Grafana on NodePort 30300)
+llmd-monitoring:
+	$(LLMD)/cluster/monitoring.sh
 
 ## Remove llm-d (keeps cluster, CRDs, clone, worker sizing)
 llmd-down:

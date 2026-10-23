@@ -74,6 +74,7 @@ to 3× `Qwen/Qwen2.5-0.5B-Instruct` on ARM64 (`manifests/modelserver/`).
 | `llmd-modelservers` | 3 × vLLM CPU (`vllm/vllm-openai-cpu:v0.31.0`, arm64), one per worker via required anti-affinity |
 | `llmd-gateway` | NodePort 30080 → Envoy listener |
 | `llmd-verify` | Completion via the gateway + cache-aware routing proof |
+| `llmd-monitoring` | Prometheus + Grafana per the llm-d guide: kube-prometheus-stack (right-sized), EPP ServiceMonitor, decode PodMonitor, llm-d dashboards; Grafana at NodePort 30300 (admin/admin) |
 | `llmd-down` | Remove llm-d (cluster stays) |
 
 `make llmd-verify` proves the phase-2 claim end to end from the host: a curl to
