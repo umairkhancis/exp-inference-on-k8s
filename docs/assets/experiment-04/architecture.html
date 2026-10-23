@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1600px; height: 900px; overflow: hidden; }
+  body {
+    font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    background: radial-gradient(1100px 750px at 50% 30%, #13223f 0%, #0b1120 60%, #070b16 100%);
+    color: #e2e8f0; position: relative;
+  }
+  .kicker {
+    position: absolute; top: 56px; left: 0; right: 0; text-align: center;
+    font-size: 18px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase;
+    color: #5eead4;
+  }
+
+  /* boundaries */
+  .boundary { position: absolute; border: 1.5px dashed rgba(148,163,184,.45); border-radius: 28px; }
+  .boundary > .tag {
+    position: absolute; top: -14px; left: 28px; padding: 4px 14px;
+    font-size: 14px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    color: #94a3b8; background: #0b1120; border-radius: 999px;
+    border: 1px solid rgba(148,163,184,.35);
+  }
+  .mp  { left: 360px; top: 150px; width: 1165px; height: 650px; }
+  .k8s { left: 408px; top: 212px; width: 1070px; height: 540px; border-color: rgba(90,155,246,.5); }
+  .k8s > .tag { color: #7db4f8; border-color: rgba(90,155,246,.45); }
+
+  /* nodes */
+  .node { position: absolute; border-radius: 18px; background: rgba(15,23,42,.92); text-align: center; }
+  .node .name { font-size: 26px; font-weight: 700; }
+  .node .role { font-size: 15px; color: #64748b; margin-top: 4px; }
+
+  .user {
+    left: 104px; top: 386px; width: 160px; padding: 22px 0 20px;
+    box-shadow: 0 0 0 1.5px rgba(226,232,240,.5);
+  }
+  .user svg { display: block; margin: 0 auto 8px; }
+
+  .envoy {
+    left: 470px; top: 408px; width: 210px; padding: 26px 0;
+    box-shadow: 0 0 0 1.5px rgba(236,72,153,.65);
+  }
+  .epp {
+    left: 760px; top: 262px; width: 230px; padding: 22px 0;
+    box-shadow: 0 0 0 1.5px rgba(94,234,212,.65);
+  }
+  .epp .role { color: #5eead4; }
+
+  .pod { left: 1130px; width: 250px; padding: 20px 0; box-shadow: 0 0 0 1.5px rgba(90,155,246,.6); }
+  .pod .role { color: #7db4f8; }
+  .pod1 { top: 266px; background: rgba(23,58,108,.95);
+          box-shadow: 0 0 0 2px rgba(90,155,246,.95), 0 0 28px rgba(90,155,246,.35); }
+  .pod2 { top: 432px; }
+  .pod3 { top: 598px; }
+
+  .fleet-caption {
+    position: absolute; left: 1130px; top: 712px; width: 250px; text-align: center;
+    font-size: 14px; color: #64748b;
+  }
+  .fleet-caption b { color: #94a3b8; }
+
+  /* arrow labels */
+  .alabel { position: absolute; font-size: 14px; color: #94a3b8; }
+  .alabel.api { left: 272px; top: 408px; width: 196px; text-align: center; }
+  .alabel.api .cmd { font-family: "SF Mono", Menlo, monospace; font-size: 17px; color: #e2e8f0; font-weight: 600; }
+  .alabel.api .what { font-size: 13px; color: #64748b; margin-top: 3px; }
+  .alabel.pick { left: 660px; top: 344px; color: #5eead4; }
+
+  svg.wires { position: absolute; inset: 0; pointer-events: none; }
+
+  .footer {
+    position: absolute; bottom: 34px; left: 90px; right: 90px;
+    display: flex; justify-content: space-between; font-size: 16px; color: #475569;
+  }
+  .footer b { color: #94a3b8; font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="kicker">llm-d on Kubernetes · Experiment 04</div>
+
+  <div class="boundary mp"><div class="tag">Multipass · Ubuntu VMs</div></div>
+  <div class="boundary k8s"><div class="tag">Kubernetes · kubeadm</div></div>
+
+  <svg class="wires" width="1600" height="900" viewBox="0 0 1600 900">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+      </marker>
+      <marker id="ah-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#5eead4"/>
+      </marker>
+      <marker id="ah-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#7db4f8"/>
+      </marker>
+    </defs>
+    <!-- user -> envoy -->
+    <line x1="268" y1="470" x2="462" y2="470" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#ah)"/>
+    <!-- envoy <-> epp (consult) -->
+    <path d="M 640 406 C 660 370, 700 330, 752 316" fill="none" stroke="#5eead4"
+          stroke-width="2" stroke-dasharray="7 6" marker-end="url(#ah-teal)"/>
+    <!-- envoy -> chosen pod (bright) -->
+    <path d="M 682 440 C 900 400, 980 340, 1122 322" fill="none" stroke="#7db4f8"
+          stroke-width="3" marker-end="url(#ah-blue)"/>
+    <!-- envoy -> other pods (faint) -->
+    <path d="M 682 476 C 900 476, 980 486, 1122 488" fill="none" stroke="#334155"
+          stroke-width="2" stroke-dasharray="4 7" marker-end="url(#ah)" opacity=".6"/>
+    <path d="M 682 506 C 900 560, 980 630, 1122 652" fill="none" stroke="#334155"
+          stroke-width="2" stroke-dasharray="4 7" marker-end="url(#ah)" opacity=".6"/>
+  </svg>
+
+  <div class="node user">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round">
+      <circle cx="12" cy="8" r="4"/>
+      <path d="M4 21 c0 -4.5 3.5 -7 8 -7 s8 2.5 8 7"/>
+    </svg>
+    <div class="name">User</div>
+  </div>
+  <div class="alabel api">
+    <div class="cmd">curl</div>
+    <div class="what">OpenAI-compatible API<br>POST /v1/completions</div>
+  </div>
+
+  <div class="node envoy"><div class="name">Envoy</div><div class="role">gateway</div></div>
+  <div class="alabel pick">pick pod</div>
+  <div class="node epp"><div class="name">EPP</div><div class="role">cache-aware routing</div></div>
+
+  <div class="node pod pod1"><div class="name">vLLM</div><div class="role">cache hit ✓</div></div>
+  <div class="node pod pod2"><div class="name">vLLM</div><div class="role">worker 2</div></div>
+  <div class="node pod pod3"><div class="name">vLLM</div><div class="role">worker 3</div></div>
+  <div class="fleet-caption">×3 · <b>Qwen/Qwen2.5-0.5B-Instruct</b></div>
+
+  <div class="footer">
+    <div><b>github.com/umairkhancis/exp-inference-on-k8s</b></div>
+    <div>self-hosted · $0.00 per token</div>
+  </div>
+</body>
+</html>
