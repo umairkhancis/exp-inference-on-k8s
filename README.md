@@ -26,10 +26,12 @@ lives in the VMs, and `make down` removes every trace.
 ## Install
 
 ```sh
-git clone https://github.com/umairkhancis/exp-inference-on-k8s.git
-cd exp-inference-on-k8s
-./install.sh            # ~45–60 min on first run (image + model downloads)
+curl -fsSL https://raw.githubusercontent.com/umairkhancis/exp-inference-on-k8s/experiment/04/install.sh | bash
 ```
+
+That one command clones the repo (into `./exp-inference-on-k8s`) and brings up
+the whole stack. First run takes ~45–60 min (Ubuntu image + model downloads).
+Already cloned? `./install.sh` does the same from inside the repo.
 
 Every layer is idempotent: if anything fails (a flaky download, a timeout),
 just run it again — finished layers skip themselves.

@@ -81,11 +81,9 @@ Experiment #04: Distributed inference on your laptop, the way the big labs route
 
 A fleet of 3 vLLM servers on a real 4-node Kubernetes cluster, behind a router that understands KV cache: requests sharing a prompt prefix go back to the pod that already computed it, unrelated requests spread across the fleet. I measured both from outside the cluster — 8 shared-prefix requests landed on ONE pod (thousands of prefix-cache hits, zero recompute), 12 unrelated requests spread 4/4/4.
 
-You can have the exact same stack — cluster, gateway, fleet, Grafana dashboards — with one command on a Mac (Apple Silicon, 24GB RAM):
+You can have the exact same stack — cluster, gateway, fleet, Grafana dashboards — with ONE command on a Mac (Apple Silicon, 24GB RAM). It clones the repo and brings up everything:
 
-git clone https://github.com/umairkhancis/exp-inference-on-k8s.git
-cd exp-inference-on-k8s
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/umairkhancis/exp-inference-on-k8s/experiment/04/install.sh | bash
 
 Then prove the routing claims on your own machine:
 
