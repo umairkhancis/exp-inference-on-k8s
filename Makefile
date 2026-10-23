@@ -14,7 +14,8 @@ export KUBECONFIG := $(CURDIR)/kubeconfig/config
 .PHONY: up down status \
 	host-prereqs instances node-prereqs control-plane workers kubeconfig verify \
 	llmd-up llmd-down llmd-resize-workers llmd-repo llmd-prereqs llmd-router \
-	llmd-modelservers llmd-gateway llmd-verify llmd-monitoring
+	llmd-modelservers llmd-gateway llmd-verify llmd-monitoring \
+	llmd-verify-affinity llmd-verify-spread
 
 ## Full bring-up: host prereqs → VMs → node runtime → control plane → workers → access → verify
 up: host-prereqs instances node-prereqs control-plane workers kubeconfig verify
@@ -89,9 +90,17 @@ llmd-modelservers:
 llmd-gateway:
 	$(LLMD)/access/expose-gateway.sh
 
-## Completion via Envoy + cache-aware routing proof
+## Completion via Envoy + both routing proofs
 llmd-verify:
 	$(LLMD)/access/verify.sh
+
+## Same prompt prefix => same vLLM pod (cache-aware affinity)
+llmd-verify-affinity:
+	$(LLMD)/access/verify-prefix-affinity.sh
+
+## Distinct prompts => spread across vLLM pods (load-based)
+llmd-verify-spread:
+	$(LLMD)/access/verify-load-spread.sh
 
 ## Prometheus + Grafana per the llm-d guide (Grafana on NodePort 30300)
 llmd-monitoring:

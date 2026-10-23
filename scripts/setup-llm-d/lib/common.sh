@@ -24,3 +24,24 @@ SETUP_LLMD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 k() { kubectl --kubeconfig "${KUBECONFIG_PATH}" "$@"; }
 kn() { k -n "${LLMD_NS}" "$@"; }
+
+gateway_url() { echo "http://$(vm_ip "${MASTER_NAME}"):${LLMD_NODEPORT}"; }
+
+decode_pods() { kn get pods -l llm-d.ai/role=decode -o jsonpath='{.items[*].metadata.name}'; }
+
+pod_node() { kn get pod "$1" -o jsonpath='{.spec.nodeName}'; }
+
+# pod_metric <pod> <metric-name> — summed value of a vLLM counter, read through
+# the API-server proxy (no port-forward needed)
+pod_metric() {
+  k get --raw "/api/v1/namespaces/${LLMD_NS}/pods/${1}:8000/proxy/metrics" 2>/dev/null \
+    | awk -v m="$2" '$0 ~ "^"m"{" || $1 == m {s+=$NF} END {printf "%.0f", s}'
+}
+
+# gateway_completion <prompt> [max_tokens] — one completion via the gateway,
+# prints the HTTP status code
+gateway_completion() {
+  curl -sS -m 120 -o /dev/null -w '%{http_code}' -X POST "$(gateway_url)/v1/completions" \
+    -H 'Content-Type: application/json' \
+    -d "{\"model\": \"${LLMD_MODEL}\", \"prompt\": $(jq -Rn --arg p "$1" '$p'), \"max_tokens\": ${2:-8}}"
+}

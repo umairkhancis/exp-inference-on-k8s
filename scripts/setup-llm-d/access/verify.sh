@@ -1,22 +1,14 @@
 #!/usr/bin/env bash
 # Layer 6 — phase-2 verification, all from the host:
-#   1. a completion request to the NodePort answered 200 via Envoy (server header)
-#   2. cache-aware routing: N requests sharing a long prefix land on ONE vLLM pod
-#      (per-pod vllm:prefix_cache_queries_total delta) and that pod reports
-#      prefix-cache HITS — i.e. the EPP routed by cache affinity, not round-robin.
+#   1. a completion through the gateway answers 200 via Envoy (ext-proc header)
+#   2. verify-prefix-affinity.sh — same prefix => same vLLM pod, with cache hits
+#   3. verify-load-spread.sh    — distinct prompts => spread across pods
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 
-GATEWAY="http://$(vm_ip "${MASTER_NAME}"):${LLMD_NODEPORT}"
-PODS=($(kn get pods -l llm-d.ai/role=decode -o jsonpath='{.items[*].metadata.name}'))
-[[ "${#PODS[@]}" -ge 2 ]] || die "need >=2 decode pods for a routing test, found ${#PODS[@]}"
+GATEWAY="$(gateway_url)"
 
-metric() { # metric <pod> <metric-name> -> summed value (or 0)
-  k get --raw "/api/v1/namespaces/${LLMD_NS}/pods/${1}:8000/proxy/metrics" 2>/dev/null \
-    | awk -v m="$2" '$0 ~ "^"m"{" || $1 == m {s+=$NF} END {printf "%.0f", s}'
-}
-
-log "1/2 Completion request through the gateway (${GATEWAY})"
+log "1/3 Completion request through the gateway (${GATEWAY})"
 RESP_HEADERS="$(mktemp)"
 BODY=""
 for attempt in 1 2 3 4 5; do # a freshly created NodePort needs a moment in kube-proxy
@@ -38,35 +30,10 @@ grep -qi '^x-went-into-resp-headers' "${RESP_HEADERS}" \
 echo "${BODY}" | jq -e '.choices[0].text' >/dev/null || die "no completion text in response"
 log "Completion OK: $(echo "${BODY}" | jq -c '{model, text: .choices[0].text}')"
 
-log "2/2 Cache-aware routing: 8 requests sharing a ~500-token prefix"
-declare -a Q0 H0
-for i in "${!PODS[@]}"; do
-  Q0[$i]="$(metric "${PODS[$i]}" vllm:prefix_cache_queries_total)"
-  H0[$i]="$(metric "${PODS[$i]}" vllm:prefix_cache_hits_total)"
-done
+log "2/3 Cache-aware routing (shared prefix => one pod)"
+"$(dirname "${BASH_SOURCE[0]}")/verify-prefix-affinity.sh"
 
-PREFIX="$(printf 'The llm-d endpoint picker routes a request to the vllm pod that already holds its prefix in the kv cache. %.0s' {1..40})"
-for i in $(seq 1 8); do
-  code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST "${GATEWAY}/v1/completions" \
-    -H 'Content-Type: application/json' \
-    -d "{\"model\": \"${LLMD_MODEL}\", \"prompt\": \"${PREFIX} Question ${i}: what is llm-d?\", \"max_tokens\": 8}")"
-  echo "  shared-prefix request ${i}: HTTP ${code}"
-  [[ "${code}" == "200" ]] || die "shared-prefix request ${i} failed"
-done
+log "3/3 Load-based routing (distinct prompts => spread)"
+"$(dirname "${BASH_SOURCE[0]}")/verify-load-spread.sh"
 
-log "Per-pod prefix-cache deltas (queries routed / cache hits):"
-TOTAL_DQ=0 WINNERS=0 HIT_OK=0
-for i in "${!PODS[@]}"; do
-  dq=$(( $(metric "${PODS[$i]}" vllm:prefix_cache_queries_total) - Q0[$i] ))
-  dh=$(( $(metric "${PODS[$i]}" vllm:prefix_cache_hits_total) - H0[$i] ))
-  node="$(kn get pod "${PODS[$i]}" -o jsonpath='{.spec.nodeName}')"
-  printf '  %-45s %-14s queries+%-4s hits+%s\n' "${PODS[$i]}" "(${node})" "${dq}" "${dh}"
-  TOTAL_DQ=$(( TOTAL_DQ + dq ))
-  if (( dq >= 7 )); then WINNERS=$(( WINNERS + 1 )); (( dh > 0 )) && HIT_OK=1; fi
-done
-
-(( TOTAL_DQ >= 8 )) || die "expected >=8 routed queries, metrics saw ${TOTAL_DQ}"
-(( WINNERS == 1 )) || die "shared-prefix traffic was spread across pods — cache-aware routing NOT in effect"
-(( HIT_OK == 1 )) || die "winning pod reports no prefix-cache hits"
-
-log "Verification passed: Envoy -> EPP -> vLLM with cache-aware routing (all shared-prefix requests pinned to one pod, with prefix-cache hits)"
+log "Verification passed: Envoy -> EPP -> vLLM, cache-affine for shared prefixes, load-spread otherwise"

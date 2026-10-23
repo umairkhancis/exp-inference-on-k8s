@@ -73,7 +73,9 @@ to 3× `Qwen/Qwen2.5-0.5B-Instruct` on ARM64 (`manifests/modelserver/`).
 | `llmd-router` | `llm-d-router-standalone` chart: Envoy + EPP with prefix-cache-affinity + token-load scorers |
 | `llmd-modelservers` | 3 × vLLM CPU (`vllm/vllm-openai-cpu:v0.31.0`, arm64), one per worker via required anti-affinity |
 | `llmd-gateway` | NodePort 30080 → Envoy listener |
-| `llmd-verify` | Completion via the gateway + cache-aware routing proof |
+| `llmd-verify` | Completion via the gateway + both routing proofs below |
+| `llmd-verify-affinity` | Same prompt prefix ⇒ all requests pin to ONE vLLM pod, with prefix-cache hits |
+| `llmd-verify-spread` | Distinct prompts ⇒ requests spread across pods (load-based, no false pinning) |
 | `llmd-monitoring` | Prometheus + Grafana per the llm-d guide: kube-prometheus-stack (right-sized), EPP ServiceMonitor, decode PodMonitor, llm-d dashboards; Grafana at NodePort 30300 (admin/admin) |
 | `llmd-down` | Remove llm-d (cluster stays) |
 
