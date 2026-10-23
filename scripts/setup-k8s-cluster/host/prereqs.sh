@@ -6,13 +6,20 @@
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 
 log "Checking required host tools"
-for tool in multipass jq curl shasum git; do
+for tool in curl shasum git; do
   command -v "${tool}" >/dev/null || die "'${tool}' is required but not installed"
 done
 
-# Client-side tools llm-d's quickstart expects (phase 2 will use them).
 if command -v brew >/dev/null; then
-  for tool in kubectl helm helmfile yq; do
+  if ! command -v multipass >/dev/null; then
+    log "Installing Multipass via Homebrew (may prompt for your password)"
+    brew install --cask multipass
+    # multipassd needs a moment after first install before it accepts commands
+    for _ in $(seq 1 30); do multipass version >/dev/null 2>&1 && break; sleep 2; done
+    multipass version >/dev/null 2>&1 || die "multipassd did not come up after install"
+  fi
+  # jq + the client-side tools llm-d's quickstart expects (phase 2 uses them).
+  for tool in jq kubectl helm helmfile yq; do
     if ! command -v "${tool}" >/dev/null; then
       log "Installing ${tool} via Homebrew"
       brew install "${tool}"
@@ -25,7 +32,9 @@ if command -v brew >/dev/null; then
       || helm plugin install https://github.com/databus23/helm-diff
   fi
 else
-  command -v kubectl >/dev/null || die "kubectl is required (no Homebrew found to install it)"
+  for tool in multipass jq kubectl; do
+    command -v "${tool}" >/dev/null || die "'${tool}' is required (no Homebrew found to install it)"
+  done
   warn "Homebrew not found: install helm, helmfile and yq manually before phase 2"
 fi
 

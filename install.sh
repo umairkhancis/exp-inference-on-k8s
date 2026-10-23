@@ -7,8 +7,8 @@
 #
 # (or, from a clone: ./install.sh)
 #
-# Requirements: Apple Silicon Mac, 24GB RAM, ~40GB disk,
-#   brew install --cask multipass && brew install jq
+# Requirements: Apple Silicon Mac, 24GB RAM, ~40GB disk, Homebrew.
+# Everything else (Multipass, jq, kubectl, helm, ...) is installed for you.
 # Safe to rerun after any failure — every layer is idempotent.
 
 set -euo pipefail

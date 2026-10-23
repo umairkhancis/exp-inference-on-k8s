@@ -16,12 +16,12 @@ a smart router — on a real Kubernetes cluster, entirely on your Mac:
 ## What you need
 
 - A Mac with **Apple Silicon**, **24GB RAM**, **~40GB free disk**
-- [Multipass](https://canonical.com/multipass) and jq:
-  `brew install --cask multipass && brew install jq`
+- [Homebrew](https://brew.sh)
 
-Everything else (kubectl, helm, helmfile, yq, the Ubuntu image, the llm-d
-charts) is installed for you. Nothing runs on your Mac itself — all compute
-lives in the VMs, and `make down` removes every trace.
+Everything else ([Multipass](https://canonical.com/multipass), jq, kubectl,
+helm, helmfile, yq, the Ubuntu image, the llm-d charts) is installed for you —
+installing Multipass may prompt once for your password. Nothing computes on
+your Mac itself — it all lives in the VMs, and `make down` removes every trace.
 
 ## Install
 
