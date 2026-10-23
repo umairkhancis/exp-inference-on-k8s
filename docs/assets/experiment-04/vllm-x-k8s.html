@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1600px; height: 900px; overflow: hidden; }
+  body {
+    font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    background: radial-gradient(1100px 750px at 50% 30%, #13223f 0%, #0b1120 60%, #070b16 100%);
+    color: #e2e8f0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .kicker {
+    font-size: 19px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase;
+    color: #5eead4; margin-bottom: 54px;
+  }
+  .lockup { display: flex; align-items: center; gap: 64px; margin-bottom: 64px; }
+  .tile {
+    width: 300px; height: 300px; background: #ffffff; border-radius: 56px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 24px 70px rgba(2, 8, 23, .75), 0 0 0 1px rgba(148,163,184,.12);
+  }
+  .tile img { width: 220px; height: 220px; object-fit: contain; }
+  .x { font-size: 84px; font-weight: 300; color: #475569; }
+
+  /* hand-drawn vLLM wordmark */
+  .vllm-mark { display: flex; align-items: flex-end; }
+  .vllm-mark svg { display: block; }
+
+  h1 { font-size: 56px; font-weight: 800; color: #f8fafc; margin-bottom: 18px; letter-spacing: .5px; }
+  h1 .dim { color: #475569; font-weight: 300; padding: 0 6px; }
+  .sub { font-size: 25px; color: #94a3b8; margin-bottom: 0; }
+  .sub b { color: #38bdf8; font-weight: 700; }
+
+  .footer {
+    position: absolute; bottom: 36px; left: 90px; right: 90px;
+    display: flex; justify-content: space-between; font-size: 17px; color: #475569;
+  }
+  .footer b { color: #94a3b8; font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="kicker">Inference Unpacked · Experiment 01</div>
+
+  <div class="lockup">
+    <div class="tile">
+      <div class="vllm-mark">
+        <svg width="236" height="92" viewBox="0 0 295 115">
+          <!-- v: yellow left stroke, blue right stroke -->
+          <polygon points="4,32 36,32 48,78 26,102" fill="#f0b23e"/>
+          <polygon points="54,20 74,13 62,102 26,102" fill="#5a9bf6"/>
+          <!-- LLM -->
+          <g fill="#3f3f46" font-family="-apple-system, Helvetica, Arial, sans-serif"
+             font-weight="600" font-size="88">
+            <text x="80" y="102">LLM</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+    <div class="x">×</div>
+    <div class="tile"><img src="k8s-logo-crop.png" alt="Kubernetes"></div>
+  </div>
+
+  <h1>vLLM <span class="dim">on</span> Kubernetes</h1>
+  <div class="sub">Your own OpenAI compatible inference layer · flat rate · <b>$0.00 per token</b></div>
+
+  <div class="footer">
+    <div><b>github.com/umairkhancis/exp-inference-on-k8s</b></div>
+    <div>one command · sandboxed · reproducible</div>
+  </div>
+</body>
+</html>
