@@ -3,3 +3,5 @@ docs/background.md
 docs/phase*
 .DS_Store
 
+kubeconfig/
+.logs/
