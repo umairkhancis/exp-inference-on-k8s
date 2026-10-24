@@ -35,17 +35,19 @@ make llmd-up          # llm-d: gateway + EPP + vLLM fleet (verifies routing at t
 make llmd-monitoring  # Prometheus + Grafana
 
 MASTER_IP="$(multipass info k8s-master --format json | jq -r '.info["k8s-master"].ipv4[0]')"
+HOST="${MASTER_IP}"
+grep -qE "^${MASTER_IP}[[:space:]]+inference\.local\$" /etc/hosts && HOST="inference.local"
 echo
 echo "=============================================================="
 echo "  Done. Your inference layer is live."
 echo
-echo "  OpenAI-compatible API:  http://${MASTER_IP}:30080/v1"
-echo "  Grafana dashboards:     http://${MASTER_IP}:30300  (admin/admin)"
-echo "  Prometheus:             http://${MASTER_IP}:30090"
+echo "  OpenAI-compatible API:  http://${HOST}:30080/v1"
+echo "  Grafana dashboards:     http://${HOST}:30300  (admin/admin)"
+echo "  Prometheus:             http://${HOST}:30090"
 echo "  kubectl:                export KUBECONFIG=$(pwd)/kubeconfig/config"
 echo
 echo "  Try it:"
-echo "  curl -s http://${MASTER_IP}:30080/v1/completions \\"
+echo "  curl -s http://${HOST}:30080/v1/completions \\"
 echo "    -H 'Content-Type: application/json' \\"
 echo "    -d '{\"model\": \"Qwen/Qwen2.5-0.5B-Instruct\", \"prompt\": \"Hello\", \"max_tokens\": 32}' | jq"
 echo

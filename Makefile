@@ -12,13 +12,13 @@ LLMD := scripts/setup-llm-d
 export KUBECONFIG := $(CURDIR)/kubeconfig/config
 
 .PHONY: up down status \
-	host-prereqs instances node-prereqs control-plane workers kubeconfig verify \
+	host-prereqs instances node-prereqs control-plane workers kubeconfig verify hostname \
 	llmd-up llmd-down llmd-resize-workers llmd-repo llmd-prereqs llmd-router \
 	llmd-modelservers llmd-gateway llmd-verify llmd-monitoring \
 	llmd-verify-affinity llmd-verify-spread
 
 ## Full bring-up: host prereqs → VMs → node runtime → control plane → workers → access → verify
-up: host-prereqs instances node-prereqs control-plane workers kubeconfig verify
+up: host-prereqs instances node-prereqs control-plane workers kubeconfig verify hostname
 	@echo
 	@echo "Cluster is ready. Use it with:"
 	@echo "  export KUBECONFIG=$(KUBECONFIG)"
@@ -51,6 +51,10 @@ kubeconfig:
 ## Layer 6 — nodes Ready, system pods up, scheduling smoke test
 verify:
 	$(SCRIPTS)/access/verify.sh
+
+## Layer 7 — map inference.local to the master in /etc/hosts (sudo, best-effort)
+hostname:
+	$(SCRIPTS)/access/setup-hostname.sh
 
 ## Current VM + node state
 status:

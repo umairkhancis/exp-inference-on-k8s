@@ -58,4 +58,6 @@ k get --raw "${PROM_PROXY}/api/v1/targets" \
 [[ "${UP:-0}" -ge 2 ]] || die "expected >=2 healthy llm-d scrape targets (EPP + decode pods), got ${UP:-0}"
 
 MASTER_IP="$(vm_ip "${MASTER_NAME}")"
-log "Monitoring ready: Grafana http://${MASTER_IP}:30300 (admin/admin), Prometheus http://${MASTER_IP}:30090"
+HOST="${MASTER_IP}"
+grep -qE "^${MASTER_IP}[[:space:]]+inference\.local\$" /etc/hosts && HOST="inference.local"
+log "Monitoring ready: Grafana http://${HOST}:30300 (admin/admin), Prometheus http://${HOST}:30090"

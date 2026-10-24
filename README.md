@@ -23,7 +23,7 @@ helm, helmfile, yq, the Ubuntu image, the llm-d charts) is installed for you —
 installing Multipass may prompt once for your password. Nothing computes on
 your Mac itself — it all lives in the VMs, and `make down` removes every trace.
 
-## Install
+## Quick setup — one command
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/umairkhancis/exp-inference-on-k8s/experiment/04/install.sh | bash
@@ -33,31 +33,45 @@ That one command clones the repo (into `./exp-inference-on-k8s`) and brings up
 the whole stack. First run takes ~45–60 min (Ubuntu image + model downloads).
 Already cloned? `./install.sh` does the same from inside the repo.
 
+It may prompt for your password: mapping `inference.local` to the cluster in
+`/etc/hosts` (and installing Multipass, if missing) needs admin rights.
+
 Every layer is idempotent: if anything fails (a flaky download, a timeout),
 just run it again — finished layers skip themselves.
 
-Prefer to watch it happen in stages?
+## Or step by step
+
+The one command is just these stages — run them yourself to watch each layer
+come up:
 
 ```sh
-make up                 # the Kubernetes cluster
-make llmd-up            # gateway + EPP + vLLM fleet (ends by verifying routing)
-make llmd-monitoring    # Prometheus + Grafana
+git clone https://github.com/umairkhancis/exp-inference-on-k8s.git
+cd exp-inference-on-k8s
+
+make host-prereqs       # 1. dependencies: Multipass, jq, kubectl, helm… + Ubuntu image
+make up                 # 2. the Kubernetes cluster (VMs -> kubeadm -> CNI -> verify)
+make llmd-up            # 3. llm-d: gateway + EPP + vLLM fleet (ends by verifying routing)
+make llmd-monitoring    # 4. Prometheus + Grafana
 ```
+
+Each stage is itself made of small addressable layers (`make instances`,
+`make control-plane`, `make llmd-router`, …) — the Makefile lists them all.
 
 ## Use it
 
-The install prints your master node's IP (something like `192.168.252.21`).
+The install maps `inference.local` to the cluster in `/etc/hosts` (if that
+step was skipped, the banner prints the master IP to use instead).
 
 **Call the API** — it speaks the OpenAI protocol, so point any SDK at it:
 
 ```sh
-curl -s http://<master-ip>:30080/v1/completions \
+curl -s http://inference.local:30080/v1/completions \
   -H 'Content-Type: application/json' \
   -d '{"model": "Qwen/Qwen2.5-0.5B-Instruct", "prompt": "Kubernetes is", "max_tokens": 32}' | jq
 ```
 
-**Watch the dashboards** — `http://<master-ip>:30300` (admin/admin): request
-rates, latency, prefix-cache hit rates, per-pod load.
+**Watch the dashboards** — `http://inference.local:30300` (admin/admin):
+request rates, latency, prefix-cache hit rates, per-pod load.
 
 **Drive the cluster** — `export KUBECONFIG=$(pwd)/kubeconfig/config`, then
 `kubectl -n llm-d get pods -o wide` shows the fleet, one vLLM per worker.
