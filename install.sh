@@ -13,6 +13,11 @@
 
 set -euo pipefail
 
+# Everything lives in main() so that `curl | bash` parses the WHOLE script
+# before running any of it — otherwise a child process reading stdin would
+# swallow the not-yet-read remainder of the script and bash would stop early.
+main() {
+
 REPO_URL="https://github.com/umairkhancis/exp-inference-on-k8s.git"
 REPO_BRANCH="experiment/04"
 REPO_DIR="exp-inference-on-k8s"
@@ -46,3 +51,7 @@ echo "    -d '{\"model\": \"Qwen/Qwen2.5-0.5B-Instruct\", \"prompt\": \"Hello\",
 echo
 echo "  Tear down: make llmd-down && make down"
 echo "=============================================================="
+
+}
+
+main "$@"
