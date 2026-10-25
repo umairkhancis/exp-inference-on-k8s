@@ -34,8 +34,6 @@ make llmd-up            # 3. llm-d: gateway + EPP + vLLM fleet + routing proofs
 make llmd-monitoring    # 4. Prometheus + Grafana
 ```
 
-Finer-grained layers (`make instances`, `make llmd-router`, …) are in the Makefile.
-
 ## Use it
 
 ```sh
@@ -46,7 +44,6 @@ curl -s http://inference.local:30080/v1/completions \
 
 - Grafana: `http://inference.local:30300` (admin/admin) · Prometheus: `:30090`
 - kubectl: `export KUBECONFIG=$(pwd)/kubeconfig/config`
-- No hosts entry? Use the master IP the install prints.
 
 ## Prove the routing
 
