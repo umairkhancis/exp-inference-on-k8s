@@ -16,7 +16,7 @@ Everything else is installed for you; all compute stays inside the VMs.
 ## Quick setup — one command
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/umairkhancis/exp-inference-on-k8s/experiment/04/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/umairkhancis/exp-inference-on-k8s/main/install.sh | bash
 ```
 
 ~45–60 min on first run. May prompt once for your password (`/etc/hosts`

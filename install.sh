@@ -3,7 +3,7 @@
 # Multipass VMs) + llm-d distributed inference (Envoy gateway, cache-aware
 # EPP routing, 3 vLLM replicas) + Prometheus/Grafana monitoring.
 #
-#   curl -fsSL https://raw.githubusercontent.com/umairkhancis/exp-inference-on-k8s/experiment/04/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/umairkhancis/exp-inference-on-k8s/main/install.sh | bash
 #
 # (or, from a clone: ./install.sh)
 #
@@ -43,7 +43,7 @@ echo "  ${BOLD}Inference Unpacked${RESET} ${DIM}· experiment 04 · distributed 
 echo
 
 REPO_URL="https://github.com/umairkhancis/exp-inference-on-k8s.git"
-REPO_BRANCH="experiment/04"
+REPO_BRANCH="main"
 REPO_DIR="exp-inference-on-k8s"
 
 # Bootstrap: when piped from curl there is no repo around this script — clone it.
