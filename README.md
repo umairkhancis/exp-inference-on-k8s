@@ -1,10 +1,14 @@
-# Distributed LLM inference on your laptop
+# Experimenting Distributed LLM inference on K8s cluster
 
 A fleet of 3 vLLM servers behind llm-d's cache-aware router (Envoy + EPP),
-on a 4-node kubeadm cluster in Multipass VMs — one OpenAI-compatible API,
+on a 4-node kubeadm cluster in Multipass VMs; one OpenAI-compatible API,
 with Prometheus + Grafana.
 
+## Simple Architecture View
 ![architecture](docs/assets/experiment-04/architecture.png)
+
+## Full Architecture View
+![architecture-full](docs/assets/experiment-04/architecture-full.png)
 
 **Requires:** Apple Silicon Mac, 24GB RAM, ~40GB disk, [Homebrew](https://brew.sh).
 Everything else is installed for you; all compute stays inside the VMs.

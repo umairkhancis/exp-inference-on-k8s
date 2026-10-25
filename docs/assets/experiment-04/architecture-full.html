@@ -1,0 +1,177 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1600px; height: 900px; overflow: hidden; }
+  body {
+    font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    background: radial-gradient(1100px 750px at 55% 35%, #13223f 0%, #0b1120 60%, #070b16 100%);
+    color: #e2e8f0; position: relative;
+  }
+  .kicker {
+    position: absolute; top: 40px; left: 0; right: 0; text-align: center;
+    font-size: 18px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase;
+    color: #5eead4;
+  }
+
+  /* boundaries */
+  .boundary { position: absolute; border: 1.5px dashed rgba(148,163,184,.45); border-radius: 26px; }
+  .boundary > .tag {
+    position: absolute; top: -13px; left: 26px; padding: 3px 13px;
+    font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    color: #94a3b8; background: #0b1120; border-radius: 999px;
+    border: 1px solid rgba(148,163,184,.35);
+  }
+  .mp   { left: 320px; top: 120px; width: 1215px; height: 730px; }
+  .k8s  { left: 358px; top: 180px; width: 1140px; height: 638px; border-color: rgba(125,180,248,.5); }
+  .k8s > .tag  { color: #7db4f8; border-color: rgba(125,180,248,.45); left: 24px; }
+  .llmd { left: 376px; top: 330px; width: 1104px; height: 296px; border-color: rgba(94,234,212,.6); z-index: 3; }
+  .llmd > .tag { color: #5eead4; border-color: rgba(94,234,212,.5); background: #0d1526; }
+
+  /* master + worker nodes */
+  .knode { position: absolute; border-radius: 14px; border: 1px solid rgba(148,163,184,.3);
+           background: rgba(15,23,42,.55); }
+  .knode .nlabel {
+    position: absolute; top: 8px; left: 0; right: 0; text-align: center;
+    font-size: 13px; font-weight: 600; letter-spacing: 1px; color: #64748b;
+  }
+  .master { left: 390px; top: 206px; width: 1076px; height: 56px; }
+  .master .nlabel { top: 18px; font-size: 14px; }
+  .master .nlabel b { color: #94a3b8; }
+  .w1 { left: 390px;  top: 290px; width: 336px; height: 506px; }
+  .w2 { left: 760px;  top: 290px; width: 336px; height: 506px; }
+  .w3 { left: 1130px; top: 290px; width: 336px; height: 506px; }
+
+  /* pods */
+  .pod { position: absolute; border-radius: 14px; background: rgba(15,23,42,.95);
+         text-align: center; z-index: 4; }
+  .pod .name { font-size: 22px; font-weight: 700; }
+  .pod .role { font-size: 13px; color: #64748b; margin-top: 3px; }
+
+  .router { left: 414px; top: 352px; width: 288px; height: 118px;
+            box-shadow: 0 0 0 1.5px rgba(236,72,153,.65); padding-top: 12px; }
+  .router .chips { display: flex; justify-content: center; gap: 10px; margin-top: 6px; }
+  .router .chip { padding: 7px 16px; border-radius: 9px; font-size: 17px; font-weight: 700; }
+  .router .envoy { background: rgba(236,72,153,.16); box-shadow: 0 0 0 1px rgba(236,72,153,.6); }
+  .router .epp   { background: rgba(94,234,212,.12); box-shadow: 0 0 0 1px rgba(94,234,212,.6); color: #5eead4; }
+  .router .role  { margin-top: 8px; }
+
+  .vllm { width: 288px; height: 92px; padding-top: 18px;
+          box-shadow: 0 0 0 1.5px rgba(125,180,248,.6); }
+  .vllm .role { color: #7db4f8; }
+  .v1 { left: 414px;  top: 498px; }
+  .v2 { left: 784px;  top: 408px; }
+  .v3 { left: 1154px; top: 408px; }
+
+  .mon { width: 288px; height: 86px; padding-top: 16px; }
+  .graf { left: 784px;  top: 676px; box-shadow: 0 0 0 1.5px rgba(246,147,62,.65); }
+  .graf .role { color: #f6933e; }
+  .prom { left: 1154px; top: 676px; box-shadow: 0 0 0 1.5px rgba(230,82,44,.7); }
+  .prom .role { color: #e6522c; }
+
+  /* user */
+  .user { position: absolute; left: 92px; top: 396px; width: 160px; padding: 20px 0 18px;
+          border-radius: 18px; background: rgba(15,23,42,.92); text-align: center;
+          box-shadow: 0 0 0 1.5px rgba(226,232,240,.5); }
+  .user svg { display: block; margin: 0 auto 8px; }
+  .user .name { font-size: 24px; font-weight: 700; }
+
+  .alabel { position: absolute; font-size: 13px; color: #94a3b8; z-index: 5; }
+  .alabel .cmd { font-family: "SF Mono", Menlo, monospace; font-size: 16px; color: #e2e8f0; font-weight: 600; }
+  .api   { left: 236px; top: 332px; width: 180px; text-align: center; }
+  .api .what { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .dash  { left: 400px; top: 736px; color: #f6933e; font-size: 13px; }
+  .scrape{ left: 1236px; top: 596px; color: #64748b; font-size: 12px; z-index: 5; }
+
+  svg.wires { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+
+  .footer {
+    position: absolute; bottom: 26px; left: 90px; right: 90px;
+    display: flex; justify-content: space-between; font-size: 15px; color: #475569;
+  }
+  .footer b { color: #94a3b8; font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="kicker">llm-d on Kubernetes · Experiment 04</div>
+
+  <div class="boundary mp"><div class="tag">Multipass · Ubuntu VMs</div></div>
+  <div class="boundary k8s"><div class="tag">Kubernetes · kubeadm</div></div>
+
+  <div class="knode master"><div class="nlabel"><b>k8s-master</b> · control plane</div></div>
+  <div class="knode w1"><div class="nlabel">k8s-worker-1</div></div>
+  <div class="knode w2"><div class="nlabel">k8s-worker-2</div></div>
+  <div class="knode w3"><div class="nlabel">k8s-worker-3</div></div>
+
+  <div class="boundary llmd"><div class="tag">llm-d</div></div>
+
+  <svg class="wires" width="1600" height="900" viewBox="0 0 1600 900">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+      </marker>
+      <marker id="ah-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#7db4f8"/>
+      </marker>
+      <marker id="ah-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#f6933e"/>
+      </marker>
+      <marker id="ah-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#e6522c"/>
+      </marker>
+    </defs>
+
+    <!-- user -> router (Envoy) -->
+    <line x1="256" y1="440" x2="406" y2="416" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#ah)"/>
+
+    <!-- router -> vLLM pods -->
+    <line x1="558" y1="472" x2="558" y2="490" stroke="#7db4f8" stroke-width="2.5" marker-end="url(#ah-blue)"/>
+    <path d="M 704 430 C 740 432, 744 446, 776 452" fill="none" stroke="#7db4f8" stroke-width="2.5" marker-end="url(#ah-blue)"/>
+    <path d="M 704 404 C 920 376, 1020 408, 1146 444" fill="none" stroke="#7db4f8" stroke-width="2.5" marker-end="url(#ah-blue)"/>
+
+    <!-- prometheus scrapes the fleet (dashed) -->
+    <line x1="1298" y1="672" x2="1298" y2="508" stroke="#e6522c" stroke-width="1.5" stroke-dasharray="5 6" opacity=".7" marker-end="url(#ah-red)"/>
+    <path d="M 1226 672 C 1100 600, 1020 548, 936 508" fill="none" stroke="#e6522c" stroke-width="1.5" stroke-dasharray="5 6" opacity=".55" marker-end="url(#ah-red)"/>
+    <path d="M 1154 700 C 900 650, 680 630, 566 598" fill="none" stroke="#e6522c" stroke-width="1.5" stroke-dasharray="5 6" opacity=".4" marker-end="url(#ah-red)"/>
+
+    <!-- prometheus -> grafana -->
+    <line x1="1148" y1="722" x2="1078" y2="722" stroke="#f6933e" stroke-width="2" marker-end="url(#ah-orange)"/>
+
+    <!-- user -> grafana (dashboards) -->
+    <path d="M 172 506 C 240 740, 480 760, 778 726" fill="none" stroke="#f6933e" stroke-width="1.5" stroke-dasharray="5 6" opacity=".55" marker-end="url(#ah-orange)"/>
+  </svg>
+
+  <div class="user">
+    <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#e2e8f0" stroke-width="1.8" stroke-linecap="round">
+      <circle cx="12" cy="8" r="4"/>
+      <path d="M4 21 c0 -4.5 3.5 -7 8 -7 s8 2.5 8 7"/>
+    </svg>
+    <div class="name">User</div>
+  </div>
+  <div class="alabel api">
+    <div class="cmd">curl</div>
+    <div class="what">OpenAI-compatible API · :30080</div>
+  </div>
+  <div class="alabel dash">dashboards · :30300</div>
+  <div class="alabel scrape">scrape /metrics</div>
+
+  <div class="pod router">
+    <div class="chips"><div class="chip envoy">Envoy</div><div class="chip epp">EPP</div></div>
+    <div class="role">one pod · gateway + cache-aware picker</div>
+  </div>
+
+  <div class="pod vllm v1"><div class="name">vLLM</div><div class="role">Qwen2.5-0.5B</div></div>
+  <div class="pod vllm v2"><div class="name">vLLM</div><div class="role">Qwen2.5-0.5B</div></div>
+  <div class="pod vllm v3"><div class="name">vLLM</div><div class="role">Qwen2.5-0.5B</div></div>
+
+  <div class="pod mon graf"><div class="name">Grafana</div><div class="role">dashboards</div></div>
+  <div class="pod mon prom"><div class="name">Prometheus</div><div class="role">metrics</div></div>
+
+  <div class="footer">
+    <div><b>github.com/umairkhancis/exp-inference-on-k8s</b></div>
+    <div>self-hosted · $0.00 per token</div>
+  </div>
+</body>
+</html>
