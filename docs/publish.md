@@ -77,21 +77,26 @@ Link to the repository is in the comments section.
 
 ## Post #4 — experiment/04
 
-Experiment #04: Distributed inference on your laptop, the way the big labs route it.
+I have been experimenting with llm-d. This experiment is deploying distributed inference on k8s — a fleet of model servers behind a smart router — and you can run it yourself.
 
-A fleet of 3 vLLM servers on a real 4-node Kubernetes cluster, behind a router that understands KV cache: requests sharing a prompt prefix go back to the pod that already computed it, unrelated requests spread across the fleet. I measured both from outside the cluster — 8 shared-prefix requests landed on ONE pod (thousands of prefix-cache hits, zero recompute), 12 unrelated requests spread 4/4/4.
+Run your own distributed LLM inference on Kubernetes from your own laptop, routed the way the big labs do it.
 
-You can have the exact same stack — cluster, gateway, fleet, Grafana dashboards — with ONE command on a Mac (Apple Silicon, 24GB RAM). It clones the repo and brings up everything:
+It requires three things:
 
-curl -fsSL https://raw.githubusercontent.com/umairkhancis/exp-inference-on-k8s/experiment/04/install.sh | bash
+1. A real 4-node Kubernetes cluster (1 master + 3 workers) on isolated Ubuntu VMs using Multipass and kubeadm. Not minikube this time.
+2. llm-d's gateway: an Envoy proxy that asks an Endpoint Picker (EPP) which model server should answer every request, based on KV-cache state and load.
+3. A fleet of 3 vLLM replicas serving the Qwen2.5 0.5B model, one per worker node, behind one API that works like the OpenAI API.
 
-Then prove the routing claims on your own machine:
+Point any application (OpenAI SDK or cURL script) at it by changing one line in your code.
 
-make llmd-verify-affinity
-make llmd-verify-spread
+Numbers from my MacBook, measured from outside the cluster:
 
-That's it. An OpenAI-compatible API at a flat rate: $0.00 per token.
+1. 8 requests sharing a prompt prefix: all 8 routed to the SAME pod, which reported 6000+ prefix-cache hit tokens. No recompute.
+2. 12 unrelated requests: spread evenly across all 3 pods.
+3. Live Grafana dashboards out of the box: request rates, latency, prefix-cache hit rate, per-pod load.
 
-Repo link in the comments (LinkedIn rewrites links in post text — copy the clone command from the README).
+Try it with one command, link is in the comments section.
+
+The repo has a step by step path if you want to see each step before you run it, plus the verification scripts that prove the routing claims on your own machine, and all the details.
 
 #llmd #vLLM #Kubernetes #LLM #SelfHosted #MLOps #DistributedInference
