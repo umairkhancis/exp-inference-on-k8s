@@ -39,6 +39,22 @@ kn apply -k "${LLMD_REPO}/guides/recipes/modelserver/components/monitoring" 2>/d
 log "Loading the llm-d Grafana dashboards"
 bash "${LLMD_REPO}/guides/recipes/observability/load-llm-d-dashboards.sh" "${MON_NS}"
 
+log "Making the KV-cache usage panels window-based (instant gauges read 0 between requests)"
+PERF_DASH="$(mktemp)"
+k -n "${MON_NS}" get cm llm-d-performance-kv-cache \
+    -o jsonpath='{.data.llm-d-performance-kv-cache\.json}' \
+  | jq '(.panels[] | select(.title=="KV Cache Usage %")).title = "KV Cache Usage % (peak in window)"
+      | (.panels[] | select(.title=="KV Cache Usage % (peak in window)").targets[0]).expr =
+          "avg(max_over_time(vllm:kv_cache_usage_perc{namespace=~\"$namespace\"}[$__range])) * 100"
+      | (.panels[] | select(.title=="Per-Pod KV Cache Usage")).title = "Per-Pod KV Cache Usage (peak in window)"
+      | (.panels[] | select(.title=="Per-Pod KV Cache Usage (peak in window)").targets[0]).expr =
+          "max_over_time(vllm:kv_cache_usage_perc{namespace=~\"$namespace\"}[$__range]) * 100"' \
+  > "${PERF_DASH}"
+k -n "${MON_NS}" create cm llm-d-performance-kv-cache \
+    --from-file=llm-d-performance-kv-cache.json="${PERF_DASH}" --dry-run=client -o yaml \
+  | k label --local -f - grafana_dashboard=1 -o yaml | k apply -f -
+rm -f "${PERF_DASH}"
+
 log "Exposing Grafana on NodePort 30300 and Prometheus on NodePort 30090"
 k -n "${MON_NS}" patch svc llmd-grafana -p \
   '{"spec":{"type":"NodePort","ports":[{"name":"http-web","port":80,"targetPort":3000,"nodePort":30300}]}}'
