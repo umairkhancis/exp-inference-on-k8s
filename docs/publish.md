@@ -100,3 +100,25 @@ Try it with one command, link is in the comments section.
 The repo has a step by step path if you want to see each step before you run it, plus the verification scripts that prove the routing claims on your own machine, and all the details.
 
 #llmd #vLLM #Kubernetes #LLM #SelfHosted #MLOps #DistributedInference
+
+## Post #4 — video share
+
+Watch a Kubernetes cluster, a smart router, and a fleet of 3 LLM servers come to life on a MacBook — in 60 seconds.
+
+This is llm-d running on a real 4-node kubeadm cluster, entirely on my laptop. The part worth your attention is the routing: the gateway understands KV cache. Requests that share a prompt prefix go back to the pod that already computed it (~80% cache hit rate, zero recompute). Unrelated requests spread across the fleet.
+
+The video is the actual install, step by step, with the real verification output at every stage — nothing mocked:
+
+1. One command brings up 4 VMs, kubeadm, the gateway, the fleet, and Grafana. About 40 minutes, hands-off.
+
+2. Two built-in proofs you can run yourself: 8 shared-prefix requests pin to ONE pod; 12 unrelated requests spread evenly.
+
+3. An OpenAI-compatible API at the end. Point any SDK at it. Flat rate: $0.00 per token.
+
+4. Grafana dashboards with the metrics that matter for inference: TTFT (time to first token), TPOT / inter-token latency, KV-cache hit rate and usage per pod, request throughput, and request queue depth. The routing is visible on a graph: the pinned pod sits at ~80% KV-cache hit rate while the others stay at 0%.
+
+Requirements: Apple Silicon Mac, 24GB RAM, Homebrew. Everything else installs itself.
+
+Repo link in the comments — the install command sits at the top of the README, plus a deepdive section showing the expected output of every step so you can verify as you go.
+
+#llmd #vLLM #Kubernetes #LLM #SelfHosted #MLOps #DistributedInference
